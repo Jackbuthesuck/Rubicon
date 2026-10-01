@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 public sealed class WeaponRadialMenu : MonoBehaviour
 {
+    private const int MaxWeaponsPerWheel = 8;
     [Header("References")]
     [SerializeField] private WeaponLoadout loadout;
     [SerializeField] private InputActionAsset inputActions;
@@ -15,8 +16,8 @@ public sealed class WeaponRadialMenu : MonoBehaviour
     [SerializeField, Min(40f)] private float radius = 180f;
     [SerializeField, Min(24f)] private float buttonSize = 76f;
     [SerializeField] private Color panelColor = new Color(0.02f, 0.025f, 0.02f, 0.94f);
-    [SerializeField] private Color buttonColor = new Color(0.12f, 0.14f, 0.12f, 0.95f);
-    [SerializeField] private Color selectedColor = new Color(1f, 0.72f, 0.18f, 1f);
+    [SerializeField] private Color buttonColor = Color.black;
+    [SerializeField] private Color selectedColor = Color.red;
 
     private readonly List<Button> primaryButtons = new List<Button>();
     private readonly List<Button> secondaryButtons = new List<Button>();
@@ -28,8 +29,10 @@ public sealed class WeaponRadialMenu : MonoBehaviour
     private GameObject primaryMenuRoot;
     private GameObject secondaryMenuRoot;
     private Font font;
-    private Vector2 selectionDirection = Vector2.up;
+    private Vector2 selectionDirection = new Vector2(1f, -1f).normalized;
     private bool wheelWasPressed;
+    private bool pendingPrimaryWheel;
+    private int pendingSelectionSlot = -1;
     private bool menuBuilt;
 
     private void Awake()
@@ -77,6 +80,11 @@ public sealed class WeaponRadialMenu : MonoBehaviour
     {
         if (Application.isPlaying)
         {
+            if (loadout != null)
+            {
+                loadout.WeaponSelected += HandleWeaponSelected;
+                loadout.WheelSelectionChanged += HandleWheelSelectionChanged;
+            }
             primaryWheelAction?.Enable();
             secondaryWheelAction?.Enable();
             lookAction?.Enable();
@@ -85,6 +93,11 @@ public sealed class WeaponRadialMenu : MonoBehaviour
 
     private void OnDisable()
     {
+        if (loadout != null)
+        {
+            loadout.WeaponSelected -= HandleWeaponSelected;
+            loadout.WheelSelectionChanged -= HandleWheelSelectionChanged;
+        }
         primaryWheelAction?.Disable();
         secondaryWheelAction?.Disable();
         lookAction?.Disable();
@@ -92,6 +105,13 @@ public sealed class WeaponRadialMenu : MonoBehaviour
 
     private void Update()
     {
+        if (Time.timeScale <= 0f)
+        {
+            wheelWasPressed = false;
+            SetMenuVisible(false, false);
+            return;
+        }
+
         if (!menuBuilt)
         {
             TryBuildMenu();
@@ -112,11 +132,23 @@ public sealed class WeaponRadialMenu : MonoBehaviour
         bool wheelPressed = primaryPressed || secondaryPressed;
         if (wheelPressed && !wheelWasPressed)
         {
-            selectionDirection = Vector2.up;
+            selectionDirection = new Vector2(1f, -1f).normalized;
+            pendingSelectionSlot = -1;
+        }
+
+        SetMenuVisible(primaryPressed, secondaryPressed);
+
+        if (!wheelPressed && wheelWasPressed)
+        {
+            if (pendingSelectionSlot >= 0 && loadout != null)
+            {
+                SelectWheelWeapon(pendingPrimaryWheel, pendingSelectionSlot);
+            }
+
+            pendingSelectionSlot = -1;
         }
 
         wheelWasPressed = wheelPressed;
-        SetMenuVisible(primaryPressed, secondaryPressed);
 
         if (!wheelPressed || loadout == null)
         {
@@ -124,7 +156,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
         }
 
         Vector2 direction = ReadSelectionDirection();
-        if (direction.sqrMagnitude > 0.25f)
+        if (direction.sqrMagnitude > 0.01f)
         {
             List<Button> visibleButtons = primaryPressed ? primaryButtons : secondaryButtons;
             if (visibleButtons.Count == 0)
@@ -133,9 +165,11 @@ public sealed class WeaponRadialMenu : MonoBehaviour
             }
 
             int slot = GetSlotFromDirection(direction, visibleButtons.Count);
-            SelectWheelWeapon(primaryPressed, slot);
+            pendingPrimaryWheel = primaryPressed;
+            pendingSelectionSlot = slot;
             RefreshSelection(primaryButtons, primaryWeapons);
             RefreshSelection(secondaryButtons, secondaryWeapons);
+            HighlightPendingSelection();
         }
     }
 
@@ -197,9 +231,10 @@ public sealed class WeaponRadialMenu : MonoBehaviour
         weapons.AddRange(loadout.GetWeapons(firstCategory));
         weapons.AddRange(loadout.GetWeapons(secondCategory));
         weapons.AddRange(loadout.GetWeapons(thirdCategory));
-        for (int weaponIndex = 0; weaponIndex < weapons.Count; weaponIndex++)
+        int weaponCount = Mathf.Min(weapons.Count, MaxWeaponsPerWheel);
+        for (int weaponIndex = 0; weaponIndex < weaponCount; weaponIndex++)
         {
-            CreateButton(rootRect, weaponIndex, weapons[weaponIndex], buttons, menuWeapons, weapons.Count);
+            CreateButton(rootRect, weaponIndex, weapons[weaponIndex], buttons, menuWeapons, weaponCount);
         }
 
         RefreshSelection(buttons, menuWeapons);
@@ -258,7 +293,8 @@ public sealed class WeaponRadialMenu : MonoBehaviour
     private int GetSlotFromDirection(Vector2 direction, int buttonCount)
     {
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        return Mathf.FloorToInt((angle + 450f + 180f / buttonCount) % 360f / (360f / buttonCount));
+        float step = 360f / buttonCount;
+        return Mathf.FloorToInt((90f - angle + step * 0.5f + 360f) % 360f / step);
     }
 
     private void SelectWheelWeapon(bool primaryWheel, int slot)
@@ -266,11 +302,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
         WeaponCategory[] categories = primaryWheel
             ? new[] { WeaponCategory.SR, WeaponCategory.AR, WeaponCategory.LMG }
             : new[] { WeaponCategory.HG, WeaponCategory.SG, WeaponCategory.SMG };
-        List<WeaponController> weapons = new List<WeaponController>();
-        foreach (WeaponCategory category in categories)
-        {
-            weapons.AddRange(loadout.GetWeapons(category));
-        }
+        List<WeaponController> weapons = GetRadialWeapons(categories);
 
         if (weapons.Count > 0)
         {
@@ -286,6 +318,68 @@ public sealed class WeaponRadialMenu : MonoBehaviour
                 ? selectedColor
                 : buttonColor;
         }
+    }
+
+    private void HighlightPendingSelection()
+    {
+        List<Button> buttons = pendingPrimaryWheel ? primaryButtons : secondaryButtons;
+        if (pendingSelectionSlot < 0 || pendingSelectionSlot >= buttons.Count)
+        {
+            return;
+        }
+
+        buttons[pendingSelectionSlot].GetComponent<Image>().color = selectedColor;
+    }
+
+    private List<WeaponController> GetRadialWeapons(WeaponCategory[] categories)
+    {
+        List<WeaponController> weapons = new List<WeaponController>();
+        foreach (WeaponCategory category in categories)
+        {
+            foreach (WeaponController weapon in loadout.GetWeapons(category))
+            {
+                if (weapons.Count >= MaxWeaponsPerWheel)
+                {
+                    return weapons;
+                }
+
+                weapons.Add(weapon);
+            }
+        }
+
+        return weapons;
+    }
+
+    private void HandleWeaponSelected(WeaponController weapon)
+    {
+        RefreshSelection(primaryButtons, primaryWeapons);
+        RefreshSelection(secondaryButtons, secondaryWeapons);
+    }
+
+    private void DestroyMenuRoots()
+    {
+        if (primaryMenuRoot != null)
+        {
+            Destroy(primaryMenuRoot);
+        }
+
+        if (secondaryMenuRoot != null)
+        {
+            Destroy(secondaryMenuRoot);
+        }
+
+        primaryMenuRoot = null;
+        secondaryMenuRoot = null;
+        primaryButtons.Clear();
+        secondaryButtons.Clear();
+        primaryWeapons.Clear();
+        secondaryWeapons.Clear();
+    }
+
+    private void HandleWheelSelectionChanged()
+    {
+        DestroyMenuRoots();
+        menuBuilt = false;
     }
 
     private void SetMenuVisible(bool primaryVisible, bool secondaryVisible)

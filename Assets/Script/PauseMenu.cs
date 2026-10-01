@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
@@ -33,10 +34,16 @@ public sealed class PauseMenu : MonoBehaviour
 
     private InputAction pauseAction;
     private InputAction cancelAction;
+    private InputAction submitAction;
+    private InputAction submitBackAction;
     private GameObject canvasObject;
     private GameObject menuRoot;
     private GameObject menuPanel;
     private Image promptBackground;
+    private Image pauseOverlay;
+    private Image pausePanelImage;
+    private GameObject sceneTitleObject;
+    private GameObject sceneTitleOverlay;
     private Text pauseTitle;
     private Text promptText;
     private bool promptInitialized;
@@ -44,6 +51,11 @@ public sealed class PauseMenu : MonoBehaviour
     private bool promptPlayStation;
     private CanvasGroup pauseTitleGroup;
     private Button[] menuButtons = new Button[0];
+        private InventoryMenu inventoryMenu;
+        private MenuController menuController;
+        private bool inventoryOpen;
+        private bool inventoryOpening;
+        private int inventoryRequestId;
     private IDisposable inputDeviceSubscription;
     private bool isPaused;
 
@@ -55,6 +67,11 @@ public sealed class PauseMenu : MonoBehaviour
         }
 
         BindSceneMenu();
+        menuController = GetComponent<MenuController>();
+        if (menuController == null)
+        {
+            menuController = gameObject.AddComponent<MenuController>();
+        }
         InitializeInput();
         SetPaused(false);
     }
@@ -75,6 +92,10 @@ public sealed class PauseMenu : MonoBehaviour
         canvasObject = menuCanvas.gameObject;
         menuRoot = menuCanvas.transform.Find("PauseContent")?.gameObject;
         menuPanel = menuRoot?.transform.Find("Panel")?.gameObject;
+        pauseOverlay = menuCanvas.transform.Find("Overlay")?.GetComponent<Image>();
+        pausePanelImage = menuPanel?.GetComponent<Image>();
+        sceneTitleObject = menuRoot?.transform.Find("Panel/Pause Canvas/SceneTitle")?.gameObject;
+        PromotePersistentTitles();
 
         if (menuRoot == null || menuPanel == null)
         {
@@ -127,7 +148,7 @@ public sealed class PauseMenu : MonoBehaviour
                     break;
                 case "INVENTORY":
                     button.onClick.RemoveAllListeners();
-                    button.onClick.AddListener(() => ShowMessage("INVENTORY  /  NOT AVAILABLE YET"));
+                    button.onClick.AddListener(OpenInventory);
                     break;
                 case "RESTART":
                     button.onClick.RemoveAllListeners();
@@ -254,6 +275,8 @@ public sealed class PauseMenu : MonoBehaviour
         {
             pauseAction = inputActions.FindAction("Player/Pause", true);
             cancelAction = inputActions.FindAction("UI/Cancel", false);
+            submitAction = inputActions.FindAction("UI/Submit A", false);
+            submitBackAction = inputActions.FindAction("UI/Submit B", false);
         }
         else
         {
@@ -273,6 +296,8 @@ public sealed class PauseMenu : MonoBehaviour
         InitializeInput();
         pauseAction?.Enable();
         cancelAction?.Enable();
+        submitAction?.Enable();
+        submitBackAction?.Enable();
         inputDeviceSubscription = InputSystem.onAnyButtonPress.Subscribe(new InputControlObserver(OnInputDeviceUsed));
     }
 
@@ -285,6 +310,8 @@ public sealed class PauseMenu : MonoBehaviour
 
         pauseAction?.Disable();
         cancelAction?.Disable();
+        submitAction?.Disable();
+        submitBackAction?.Disable();
         inputDeviceSubscription?.Dispose();
         inputDeviceSubscription = null;
         SetPaused(false);
@@ -295,17 +322,50 @@ public sealed class PauseMenu : MonoBehaviour
         bool keyboardPausePressed = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
         if ((pauseAction != null && pauseAction.WasPressedThisFrame()) || keyboardPausePressed)
         {
-            SetPaused(!isPaused);
+            if (inventoryOpen)
+            {
+                CloseInventory();
+            }
+            else
+            {
+                SetPaused(!isPaused);
+            }
         }
 
         if (isPaused && cancelAction != null && cancelAction.WasPressedThisFrame())
         {
-            SetPaused(false);
+            if (inventoryOpen)
+            {
+                CloseInventory();
+            }
+            else
+            {
+                SetPaused(false);
+            }
+            return;
+        }
+
+        if (isPaused && submitAction != null && submitAction.WasPressedThisFrame())
+        {
+            if (inventoryOpen)
+            {
+                return;
+            }
+
+            GameObject selectedObject = EventSystem.current?.currentSelectedGameObject;
+            Button selectedButton = selectedObject != null ? selectedObject.GetComponent<Button>() : null;
+            selectedButton?.onClick.Invoke();
             return;
         }
 
         if (isPaused)
         {
+            if (inventoryOpen)
+            {
+                UpdateTitlePulse();
+                return;
+            }
+
             DetectStickInput();
             UpdateButtonVisuals();
             UpdateTitlePulse();
@@ -453,8 +513,19 @@ public sealed class PauseMenu : MonoBehaviour
             return;
         }
 
+        if (inventoryOpen || inventoryOpening)
+        {
+            SetPauseTitleOpacity(1f);
+            return;
+        }
+
         float sawtooth = Mathf.Repeat(Time.unscaledTime * titlePulseSpeed, 1f);
         float opacity = Mathf.Lerp(titlePulseMinOpacity, 1f, sawtooth);
+        SetPauseTitleOpacity(opacity);
+    }
+
+    private void SetPauseTitleOpacity(float opacity)
+    {
         if (pauseTitleGroup != null)
         {
             pauseTitleGroup.alpha = opacity;
@@ -582,7 +653,7 @@ public sealed class PauseMenu : MonoBehaviour
         controlsButton.onClick.AddListener(() => ShowMessage("CONTROLS  /  WASD MOVE  /  RMB AIM  /  ESC PAUSE"));
 
         Button inventoryButton = CreateButton(optionsObject.transform, "INVENTORY");
-        inventoryButton.onClick.AddListener(() => ShowMessage("INVENTORY  /  NOT AVAILABLE YET"));
+        inventoryButton.onClick.AddListener(OpenInventory);
 
         Button restartButton = CreateButton(optionsObject.transform, "RESTART");
         restartButton.onClick.AddListener(RestartScene);
@@ -596,12 +667,18 @@ public sealed class PauseMenu : MonoBehaviour
 
     private void SetPaused(bool paused)
     {
+        inventoryRequestId++;
         isPaused = paused;
+        inventoryOpen = false;
         Time.timeScale = paused ? 0f : 1f;
 
         if (menuRoot != null && Application.isPlaying)
         {
             menuRoot.SetActive(paused);
+            inventoryOpen = false;
+            inventoryMenu?.Close();
+            menuController?.CloseAllChildren();
+            SetPauseElementsForInventory(false);
             if (paused && EventSystem.current != null && menuButtons.Length > 0)
             {
                 EventSystem.current.SetSelectedGameObject(menuButtons[0].gameObject);
@@ -618,6 +695,208 @@ public sealed class PauseMenu : MonoBehaviour
     private void ShowMessage(string message)
     {
         Debug.Log(message, this);
+    }
+
+    private void OpenInventory()
+    {
+        if (!isPaused || inventoryOpen || inventoryOpening)
+        {
+            return;
+        }
+
+        GameObject parentSelection = EventSystem.current?.currentSelectedGameObject;
+        inventoryRequestId++;
+        StartCoroutine(OpenInventoryRoutine(parentSelection, inventoryRequestId));
+    }
+
+    private IEnumerator OpenInventoryRoutine(GameObject parentSelection, int requestId)
+    {
+        inventoryOpening = true;
+        SetPauseElementsForInventory(true);
+
+        inventoryMenu = null;
+        const string inventorySceneName = "InventoryMenu";
+        Scene inventoryScene = SceneManager.GetSceneByName(inventorySceneName);
+        if (!inventoryScene.isLoaded)
+        {
+            if (!Application.CanStreamedLevelBeLoaded(inventorySceneName))
+            {
+                Debug.LogWarning("InventoryMenu.unity is not available in Build Settings.", this);
+                inventoryOpening = false;
+                SetPauseElementsForInventory(false);
+                yield break;
+            }
+
+            AsyncOperation loadOperation = SceneManager.LoadSceneAsync(inventorySceneName, LoadSceneMode.Additive);
+            if (loadOperation != null)
+            {
+                yield return loadOperation;
+            }
+
+            if (requestId != inventoryRequestId || !isPaused)
+            {
+                inventoryOpening = false;
+                SetPauseElementsForInventory(false);
+                yield break;
+            }
+
+            inventoryScene = SceneManager.GetSceneByName(inventorySceneName);
+        }
+
+        if (inventoryScene.IsValid() && inventoryScene.isLoaded)
+        {
+            GameObject[] roots = inventoryScene.GetRootGameObjects();
+            for (int rootIndex = 0; rootIndex < roots.Length && inventoryMenu == null; rootIndex++)
+            {
+                inventoryMenu = roots[rootIndex].GetComponentInChildren<InventoryMenu>(true);
+            }
+        }
+
+        if (inventoryMenu == null)
+        {
+            inventoryOpening = false;
+            SetPauseElementsForInventory(false);
+            yield break;
+        }
+
+        inventoryMenu.SetInputActions(inputActions);
+        inventoryMenu.Open();
+        inventoryOpen = inventoryMenu.IsOpen
+            && menuController != null
+            && menuController.OpenChild(inventoryMenu.ContentRoot, inventoryMenu.FirstSelectable, parentSelection);
+        inventoryOpening = false;
+
+        if (!inventoryOpen)
+        {
+            inventoryMenu.Close();
+            SetPauseElementsForInventory(false);
+            yield break;
+        }
+
+        SetPauseElementsForInventory(inventoryOpen);
+    }
+
+    private void CloseInventory()
+    {
+        if (inventoryOpening)
+        {
+            inventoryRequestId++;
+            inventoryOpening = false;
+            SetPauseElementsForInventory(false);
+            return;
+        }
+
+        inventoryOpen = false;
+        menuController?.CloseChild();
+        inventoryMenu?.Close();
+        SetPauseElementsForInventory(false);
+        menuRoot?.SetActive(isPaused);
+    }
+
+    private void SetPauseElementsForInventory(bool inventoryVisible)
+    {
+        if (menuRoot == null)
+        {
+            return;
+        }
+
+        if (!inventoryVisible)
+        {
+            if (sceneTitleOverlay != null)
+            {
+                sceneTitleOverlay.SetActive(false);
+            }
+
+            if (pauseOverlay != null)
+            {
+                pauseOverlay.enabled = true;
+            }
+
+            if (pausePanelImage != null)
+            {
+                pausePanelImage.enabled = true;
+            }
+
+            menuRoot.transform.Find("Panel/PromptBar")?.gameObject.SetActive(true);
+            foreach (Button button in menuRoot.GetComponentsInChildren<Button>(true))
+            {
+                button.gameObject.SetActive(true);
+            }
+            foreach (Text text in menuRoot.GetComponentsInChildren<Text>(true))
+            {
+                text.gameObject.SetActive(true);
+            }
+            return;
+        }
+
+        if (pauseOverlay != null)
+        {
+            pauseOverlay.enabled = false;
+        }
+
+        if (pausePanelImage != null)
+        {
+            pausePanelImage.enabled = false;
+        }
+
+        if (sceneTitleOverlay != null)
+        {
+            sceneTitleOverlay.SetActive(true);
+        }
+
+        foreach (Button button in menuRoot.GetComponentsInChildren<Button>(true))
+        {
+            button.gameObject.SetActive(false);
+        }
+        menuRoot.transform.Find("Panel/PromptBar")?.gameObject.SetActive(false);
+
+        foreach (Text text in menuRoot.GetComponentsInChildren<Text>(true))
+        {
+            bool keepText = text.text == "PAUSED" || text.text.StartsWith("ID TEST01");
+            text.gameObject.SetActive(keepText);
+        }
+    }
+
+    private void PromotePersistentTitles()
+    {
+        if (menuRoot == null)
+        {
+            return;
+        }
+
+        if (sceneTitleObject != null && sceneTitleOverlay == null)
+        {
+            sceneTitleOverlay = Instantiate(sceneTitleObject, menuCanvas.transform, true);
+            sceneTitleOverlay.name = "SceneTitleOverlay";
+            PromoteTitleCanvas(sceneTitleOverlay.transform);
+            sceneTitleOverlay.SetActive(false);
+        }
+
+        foreach (Text text in menuRoot.GetComponentsInChildren<Text>(true))
+        {
+            if (text.text == "PAUSED")
+            {
+                PromoteTitleCanvas(text.transform);
+                break;
+            }
+        }
+    }
+
+    private void PromoteTitleCanvas(Transform titleTransform)
+    {
+        if (titleTransform == null)
+        {
+            return;
+        }
+
+        Canvas titleCanvas = titleTransform.GetComponent<Canvas>();
+        if (titleCanvas == null)
+        {
+            titleCanvas = titleTransform.gameObject.AddComponent<Canvas>();
+        }
+
+        titleCanvas.overrideSorting = true;
+        titleCanvas.sortingOrder = 400;
     }
 
     private void CreatePrompt(RectTransform parent)

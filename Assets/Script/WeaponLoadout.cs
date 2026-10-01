@@ -11,15 +11,21 @@ public sealed class WeaponModelEntry
 public sealed class WeaponLoadout : MonoBehaviour
 {
     [SerializeField] private WeaponController[] startingWeapons;
-    [SerializeField] private GameObject[] weaponPrefabs;
+    [SerializeField] private WeaponController[] weaponPrefabs;
     [SerializeField] private WeaponModelEntry[] weaponModels;
     [SerializeField] private GameObject fallbackWeaponModel;
     [SerializeField, Min(0)] private int startingSlot;
 
     private readonly List<WeaponController> weapons = new List<WeaponController>();
+    private readonly Dictionary<WeaponController, GameObject> weaponRoots = new Dictionary<WeaponController, GameObject>();
+    private readonly HashSet<WeaponController> wheelSelection = new HashSet<WeaponController>();
     private int activeSlot = -1;
 
+    public event System.Action<WeaponController> WeaponSelected;
+    public event System.Action WheelSelectionChanged;
+
     public IReadOnlyList<WeaponController> Weapons => weapons;
+    public int SelectedWheelCount => wheelSelection.Count;
     public int ActiveSlot => activeSlot;
     public WeaponController ActiveWeapon => activeSlot >= 0 && activeSlot < weapons.Count ? weapons[activeSlot] : null;
     public bool IsReady { get; private set; }
@@ -47,6 +53,11 @@ public sealed class WeaponLoadout : MonoBehaviour
 
         if (weapons.Count > 0)
         {
+            for (int weaponIndex = 0; weaponIndex < weapons.Count; weaponIndex++)
+            {
+                wheelSelection.Add(weapons[weaponIndex]);
+            }
+
             SelectWeapon(Mathf.Clamp(startingSlot, 0, weapons.Count - 1));
         }
 
@@ -66,9 +77,16 @@ public sealed class WeaponLoadout : MonoBehaviour
             WeaponController weapon = weapons[weaponIndex];
             if (weapon != null)
             {
-                weapon.SetEquipped(weaponIndex == activeSlot);
+                bool selected = weaponIndex == activeSlot;
+                weapon.SetEquipped(selected);
+                if (weaponRoots.TryGetValue(weapon, out GameObject weaponRoot) && weaponRoot != null)
+                {
+                    weaponRoot.SetActive(selected);
+                }
             }
         }
+
+        WeaponSelected?.Invoke(ActiveWeapon);
 
         return true;
     }
@@ -84,13 +102,33 @@ public sealed class WeaponLoadout : MonoBehaviour
         List<WeaponController> matchingWeapons = new List<WeaponController>();
         foreach (WeaponController weapon in weapons)
         {
-            if (weapon != null && weapon.Category == category)
+            if (weapon != null && weapon.Category == category && IsSelectedForWheel(weapon))
             {
                 matchingWeapons.Add(weapon);
             }
         }
 
         return matchingWeapons;
+    }
+
+    public bool IsSelectedForWheel(WeaponController weapon)
+    {
+        return weapon != null && wheelSelection.Contains(weapon);
+    }
+
+    public void ToggleWheelSelection(WeaponController weapon)
+    {
+        if (weapon == null || !weapons.Contains(weapon))
+        {
+            return;
+        }
+
+        if (!wheelSelection.Add(weapon))
+        {
+            wheelSelection.Remove(weapon);
+        }
+
+        WheelSelectionChanged?.Invoke();
     }
 
     private void CollectExistingWeapons()
@@ -108,7 +146,10 @@ public sealed class WeaponLoadout : MonoBehaviour
         WeaponController[] childWeapons = GetComponentsInChildren<WeaponController>(true);
         foreach (WeaponController weapon in childWeapons)
         {
-            AddWeapon(weapon);
+            if (weapon != GetComponent<WeaponController>())
+            {
+                AddWeapon(weapon);
+            }
         }
     }
 
@@ -119,21 +160,25 @@ public sealed class WeaponLoadout : MonoBehaviour
             return;
         }
 
-        foreach (GameObject weaponPrefab in weaponPrefabs)
+        foreach (WeaponController weaponPrefab in weaponPrefabs)
         {
             if (weaponPrefab == null)
             {
                 continue;
             }
 
-            WeaponController weapon = weaponPrefab.GetComponentInChildren<WeaponController>(true);
-            if (weapon == null)
+            try
+            {
+                GameObject instanceObject = Instantiate(weaponPrefab.transform.root.gameObject, transform);
+                instanceObject.transform.localPosition = new Vector3(0.6f, 0f, 0f);
+                WeaponController instance = instanceObject.GetComponentInChildren<WeaponController>(true);
+                instanceObject.SetActive(false);
+                AddWeapon(instance);
+            }
+            catch (MissingReferenceException)
             {
                 continue;
             }
-
-            WeaponController instance = Instantiate(weaponPrefab, transform).GetComponentInChildren<WeaponController>(true);
-            AddWeapon(instance);
         }
     }
 
@@ -142,6 +187,12 @@ public sealed class WeaponLoadout : MonoBehaviour
         if (weapon != null && !weapons.Contains(weapon))
         {
             weapons.Add(weapon);
+            GameObject weaponRoot = weapon.transform.root.gameObject;
+            if (weaponRoot != gameObject)
+            {
+                weaponRoots[weapon] = weaponRoot;
+                weaponRoot.transform.localPosition = new Vector3(0.6f, 0f, 0f);
+            }
         }
     }
 }

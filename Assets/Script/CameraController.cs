@@ -32,6 +32,8 @@ public sealed class CameraController : MonoBehaviour
     private Camera cameraComponent;
     private PlayerController player;
     private InputAction lookAction;
+    private InputAction primaryWheelAction;
+    private InputAction secondaryWheelAction;
     private Vector3 currentVelocity;
     private float yaw;
     private float pitch;
@@ -72,6 +74,8 @@ public sealed class CameraController : MonoBehaviour
         else
         {
             lookAction = inputActions.FindAction("Player/Look", true);
+            primaryWheelAction = inputActions.FindAction("Player/Primary Wheel", false);
+            secondaryWheelAction = inputActions.FindAction("Player/Secondary Wheel", false);
         }
 
         SnapToTarget();
@@ -80,11 +84,15 @@ public sealed class CameraController : MonoBehaviour
     private void OnEnable()
     {
         lookAction?.Enable();
+        primaryWheelAction?.Enable();
+        secondaryWheelAction?.Enable();
     }
 
     private void OnDisable()
     {
         lookAction?.Disable();
+        primaryWheelAction?.Disable();
+        secondaryWheelAction?.Disable();
     }
 
     private void LateUpdate()
@@ -139,6 +147,12 @@ public sealed class CameraController : MonoBehaviour
 
     private void UpdateOrbit()
     {
+        if ((primaryWheelAction != null && primaryWheelAction.IsPressed())
+            || (secondaryWheelAction != null && secondaryWheelAction.IsPressed()))
+        {
+            return;
+        }
+
         Vector2 lookInput = lookAction?.ReadValue<Vector2>() ?? Vector2.zero;
         bool isMouse = lookAction?.activeControl?.device is Mouse;
         float multiplier = isMouse ? mouseSensitivity : gamepadSensitivity * Time.deltaTime;
