@@ -1,11 +1,14 @@
 {
   "id": "vpo74",
   "displayName": "VPO-74",
+  "ammoId": "7.62x39",
+  "modelId": "vpo74_model_missing",
   "magazineCapacity": 10,
   "startingMagazineAmmo": 10,
   "startingReserveAmmo": 60,
   "roundsPerMinute": 120,
   "reloadDuration": 1.8,
   "automatic": false,
-  "isTopLoad": false
+  "isTopLoad": false,
+  "category": "AR"
 }

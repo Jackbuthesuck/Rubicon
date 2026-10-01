@@ -1,0 +1,12 @@
+{
+  "id": "9x19",
+  "displayName": "9x19 NATO 124gr FMJ",
+  "damage": 24,
+  "pellets": 1,
+  "moa": 5,
+  "projectileSpeed": 360,
+  "recoil": 2,
+  "penetration": 100,
+  "vpamLevel": "PM1",
+  "penetrationRangeMeters": "0-25"
+}

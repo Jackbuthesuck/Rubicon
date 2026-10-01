@@ -8,6 +8,9 @@ public sealed class CameraController : MonoBehaviour
     [SerializeField] private Transform target;
     [SerializeField] private Vector3 targetOffset = new Vector3(0f, 1.45f, 0f);
     [SerializeField] private Vector3 cameraOffset = new Vector3(0.65f, 0.35f, -3.8f);
+    [SerializeField] private Vector3 aimTargetOffset = new Vector3(0f, 1.5f, 0f);
+    [SerializeField] private Vector3 aimCameraOffset = new Vector3(0.55f, 0.25f, -2.2f);
+    [SerializeField, Min(0.01f)] private float aimTransitionSpeed = 8f;
 
     [Header("Look")]
     [SerializeField] private InputActionAsset inputActions;
@@ -26,13 +29,17 @@ public sealed class CameraController : MonoBehaviour
     [SerializeField, Min(0.1f)] private float collisionPadding = 0.1f;
     [SerializeField] private LayerMask collisionMask = Physics.DefaultRaycastLayers;
 
+    private Camera cameraComponent;
+    private PlayerController player;
     private InputAction lookAction;
     private Vector3 currentVelocity;
     private float yaw;
     private float pitch;
+    private float aimBlend;
 
     private void Awake()
     {
+        cameraComponent = GetComponent<Camera>();
         pitch = Mathf.Clamp(startingPitch, minimumPitch, maximumPitch);
 
         if (target == null)
@@ -42,6 +49,11 @@ public sealed class CameraController : MonoBehaviour
             {
                 target = player.transform;
             }
+        }
+
+        if (player == null && target != null)
+        {
+            player = target.GetComponent<PlayerController>();
         }
 
         if (target != null)
@@ -84,9 +96,14 @@ public sealed class CameraController : MonoBehaviour
 
         UpdateOrbit();
 
-        Vector3 pivot = target.position + targetOffset;
+        bool isAiming = player != null && player.IsAiming;
+        aimBlend = Mathf.MoveTowards(aimBlend, isAiming ? 1f : 0f, aimTransitionSpeed * Time.deltaTime);
+
+        Vector3 currentTargetOffset = Vector3.Lerp(targetOffset, aimTargetOffset, aimBlend);
+        Vector3 currentCameraOffset = Vector3.Lerp(cameraOffset, aimCameraOffset, aimBlend);
+        Vector3 pivot = target.position + currentTargetOffset;
         Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 desiredPosition = pivot + orbitRotation * cameraOffset;
+        Vector3 desiredPosition = pivot + orbitRotation * currentCameraOffset;
         desiredPosition = ResolveCollision(pivot, desiredPosition);
 
         float positionBlend = 1f - Mathf.Exp(-positionSharpness * Time.deltaTime);
@@ -98,6 +115,11 @@ public sealed class CameraController : MonoBehaviour
             Quaternion desiredRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
             float rotationBlend = 1f - Mathf.Exp(-rotationSharpness * Time.deltaTime);
             transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, rotationBlend);
+        }
+
+        if (cameraComponent != null)
+        {
+            cameraComponent.fieldOfView = Mathf.Lerp(60f, 48f, aimBlend);
         }
     }
 

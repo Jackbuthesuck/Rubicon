@@ -64,7 +64,7 @@ public sealed class HUD : MonoBehaviour
     {
         if (player != null && crosshair != null)
         {
-            crosshair.SetAiming(player.IsAiming);
+            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed);
         }
 
         if (weaponController != null && ammoWidget != null)

@@ -1,0 +1,12 @@
+{
+  "id": "12.7x99",
+  "displayName": "12.7x99 M33 Ball",
+  "damage": 180,
+  "pellets": 1,
+  "moa": 1.0,
+  "projectileSpeed": 887,
+  "recoil": 20,
+  "penetration": 800,
+  "vpamLevel": "PM7",
+  "penetrationRangeMeters": "0-500"
+}

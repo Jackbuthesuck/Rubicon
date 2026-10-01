@@ -132,6 +132,7 @@ GameObject:
   - component: {fileID: 100003}
   - component: {fileID: 100004}
   - component: {fileID: 100005}
+  - component: {fileID: 100006}
   m_Layer: 5
   m_Name: HUDCanvas
   m_TagString: Untagged
@@ -148,7 +149,7 @@ RectTransform:
   m_GameObject: {fileID: 100000}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 100101}
@@ -193,7 +194,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::CanvasScaler
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
@@ -237,6 +238,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HUD
   player: {fileID: 0}
   vitals: {fileID: 0}
+  weaponController: {fileID: 0}
   playerName: PLAYER
   weaponName: PISTOL
   reserveAmmo: 120
@@ -251,6 +253,27 @@ MonoBehaviour:
   staminaColor: {r: 0.2, g: 0.75, b: 0.35, a: 1}
   barBackgroundColor: {r: 0.03, g: 0.04, b: 0.04, a: 0.8}
   hudFont: {fileID: 12800000, guid: 9b430e160d825cf42906d1a6c5e9c7ce, type: 3}
+--- !u!114 &100006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5592c22593606e34a92952b57b3e0975, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponRadialMenu
+  loadout: {fileID: 0}
+  inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  canvas: {fileID: 100002}
+  radialFont: {fileID: 12800000, guid: 9b430e160d825cf42906d1a6c5e9c7ce, type: 3}
+  radius: 180
+  buttonSize: 76
+  panelColor: {r: 0.02, g: 0.025, b: 0.02, a: 0.94}
+  buttonColor: {r: 0.12, g: 0.14, b: 0.12, a: 0.95}
+  selectedColor: {r: 1, g: 0.72, b: 0.18, a: 1}
 --- !u!1 &100100
 GameObject:
   m_ObjectHideFlags: 0
@@ -675,6 +698,11 @@ MonoBehaviour:
   pieces: []
   idleColor: {r: 1, g: 1, b: 1, a: 1}
   aimingColor: {r: 1, g: 0.8, b: 0.2, a: 1}
+  minimumGap: 18
+  maximumGap: 44
+  fadeStartSpeed: 2.2
+  fadeEndSpeed: 3.5
+  movementRotation: 7
 --- !u!1 &100410
 GameObject:
   m_ObjectHideFlags: 0

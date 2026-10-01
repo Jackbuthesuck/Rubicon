@@ -1,11 +1,14 @@
 {
   "id": "ak74",
   "displayName": "AK-74",
+  "ammoId": "5.45x39",
+  "modelId": "ak74_model_missing",
   "magazineCapacity": 30,
   "startingMagazineAmmo": 30,
   "startingReserveAmmo": 120,
   "roundsPerMinute": 650,
   "reloadDuration": 1.8,
   "automatic": true,
-  "isTopLoad": false
+  "isTopLoad": false,
+  "category": "AR"
 }

@@ -226,7 +226,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: 
   m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
@@ -328,6 +328,7 @@ GameObject:
   - component: {fileID: 335371039}
   - component: {fileID: 335371044}
   - component: {fileID: 335371043}
+  - component: {fileID: 335371048}
   - component: {fileID: 335371045}
   - component: {fileID: 335371046}
   - component: {fileID: 335371047}
@@ -529,6 +530,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0d3bb804b82c0849a568bd4b529f86d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Magazine
+--- !u!114 &335371048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 335371038}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f015125b7a36ae49af5b98c105ef64b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponLoadout
+  startingWeapons: []
+  weaponPrefabs:
+  - {fileID: 100100000, guid: 8e1f3a7c4d5b6a902c1d7e8f9a0b2c3d, type: 3}
+  - {fileID: 100100000, guid: 03968d66d128edb4791c158b56092d66, type: 3}
+  - {fileID: 100100000, guid: 31585289bf521c54d9ce03a10c02667e, type: 3}
+  - {fileID: 100100000, guid: e47f6a1b2c3d4e5f8091a2b3c4d5e6f7, type: 3}
+  - {fileID: 100100000, guid: 9f2a4b8c5d6e7a013d2e8f9a0b1c3d4e, type: 3}
+  - {fileID: 100100000, guid: a03b5c9d6e7f8a124e3f9a0b1c2d4e5f, type: 3}
+  weaponModels:
+  - modelId: ks23
+    prefab: {fileID: 100100000, guid: e47f6a1b2c3d4e5f8091a2b3c4d5e6f7, type: 3}
+  fallbackWeaponModel: {fileID: 100100000, guid: e47f6a1b2c3d4e5f8091a2b3c4d5e6f7, type: 3}
+  startingSlot: 0
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0

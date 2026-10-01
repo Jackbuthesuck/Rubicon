@@ -1,0 +1,12 @@
+{
+  "id": "5.45x39",
+  "displayName": "5.45x39 7N6 53gr FMJ",
+  "damage": 38,
+  "pellets": 1,
+  "moa": 2.0,
+  "projectileSpeed": 925,
+  "recoil": 4,
+  "penetration": 350,
+  "vpamLevel": "PM3",
+  "penetrationRangeMeters": "0-100"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "7.62x54R",
+  "displayName": "7.62x54R 148gr Steel-Core FMJ",
+  "damage": 95,
+  "pellets": 1,
+  "moa": 1.5,
+  "projectileSpeed": 850,
+  "recoil": 10,
+  "penetration": 500,
+  "vpamLevel": "PM4",
+  "penetrationRangeMeters": "0-150"
+}

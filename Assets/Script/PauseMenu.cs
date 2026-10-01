@@ -32,6 +32,7 @@ public sealed class PauseMenu : MonoBehaviour
     [SerializeField] private float footerHeight = 82f;
 
     private InputAction pauseAction;
+    private InputAction cancelAction;
     private GameObject canvasObject;
     private GameObject menuRoot;
     private GameObject menuPanel;
@@ -252,6 +253,7 @@ public sealed class PauseMenu : MonoBehaviour
         if (inputActions != null)
         {
             pauseAction = inputActions.FindAction("Player/Pause", true);
+            cancelAction = inputActions.FindAction("UI/Cancel", false);
         }
         else
         {
@@ -270,6 +272,7 @@ public sealed class PauseMenu : MonoBehaviour
         BindSceneMenu();
         InitializeInput();
         pauseAction?.Enable();
+        cancelAction?.Enable();
         inputDeviceSubscription = InputSystem.onAnyButtonPress.Subscribe(new InputControlObserver(OnInputDeviceUsed));
     }
 
@@ -281,6 +284,7 @@ public sealed class PauseMenu : MonoBehaviour
         }
 
         pauseAction?.Disable();
+        cancelAction?.Disable();
         inputDeviceSubscription?.Dispose();
         inputDeviceSubscription = null;
         SetPaused(false);
@@ -288,9 +292,16 @@ public sealed class PauseMenu : MonoBehaviour
 
     private void Update()
     {
-        if (pauseAction != null && pauseAction.WasPressedThisFrame())
+        bool keyboardPausePressed = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+        if ((pauseAction != null && pauseAction.WasPressedThisFrame()) || keyboardPausePressed)
         {
             SetPaused(!isPaused);
+        }
+
+        if (isPaused && cancelAction != null && cancelAction.WasPressedThisFrame())
+        {
+            SetPaused(false);
+            return;
         }
 
         if (isPaused)

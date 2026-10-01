@@ -1,11 +1,14 @@
 {
   "id": "pistol",
   "displayName": "PISTOL",
+  "ammoId": "9x19",
+  "modelId": "pistol_model_missing",
   "magazineCapacity": 12,
   "startingMagazineAmmo": 12,
   "startingReserveAmmo": 120,
   "roundsPerMinute": 600,
   "reloadDuration": 1.2,
   "automatic": false,
-  "isTopLoad": false
+  "isTopLoad": false,
+  "category": "HG"
 }

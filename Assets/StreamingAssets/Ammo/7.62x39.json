@@ -1,0 +1,12 @@
+{
+  "id": "7.62x39",
+  "displayName": "7.62x39 124gr FMJ",
+  "damage": 45,
+  "pellets": 1,
+  "moa": 3.0,
+  "projectileSpeed": 738,
+  "recoil": 6,
+  "penetration": 400,
+  "vpamLevel": "PM3",
+  "penetrationRangeMeters": "0-100"
+}

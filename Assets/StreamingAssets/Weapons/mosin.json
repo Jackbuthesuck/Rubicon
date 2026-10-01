@@ -1,11 +1,14 @@
 {
   "id": "mosin",
   "displayName": "MOSIN-NAGANT",
+  "ammoId": "7.62x54R",
+  "modelId": "mosin_model_missing",
   "magazineCapacity": 5,
   "startingMagazineAmmo": 5,
   "startingReserveAmmo": 40,
   "roundsPerMinute": 45,
   "reloadDuration": 2.2,
   "automatic": false,
-  "isTopLoad": true
+  "isTopLoad": true,
+  "category": "SR"
 }

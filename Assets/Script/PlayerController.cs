@@ -27,6 +27,9 @@ public sealed class PlayerController : MonoBehaviour
     private float verticalVelocity;
 
     public bool IsAiming { get; private set; }
+    public Vector3 PlanarVelocity => planarVelocity;
+    public Vector3 LocalPlanarVelocity => transform.InverseTransformDirection(planarVelocity);
+    public float MovementSpeed => walkSpeed;
 
     private void Awake()
     {

@@ -1,0 +1,12 @@
+{
+  "id": "23x75_buck",
+  "displayName": "23x75R Shrapnel-25 Buckshot",
+  "damage": 22,
+  "pellets": 20,
+  "moa": 25,
+  "projectileSpeed": 420,
+  "recoil": 12,
+  "penetration": 100,
+  "vpamLevel": "PM1",
+  "penetrationRangeMeters": "0-25"
+}
