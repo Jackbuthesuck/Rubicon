@@ -1,0 +1,11 @@
+{
+  "id": "ak74",
+  "displayName": "AK-74",
+  "magazineCapacity": 30,
+  "startingMagazineAmmo": 30,
+  "startingReserveAmmo": 120,
+  "roundsPerMinute": 650,
+  "reloadDuration": 1.8,
+  "automatic": true,
+  "isTopLoad": false
+}

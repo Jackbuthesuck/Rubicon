@@ -329,6 +329,8 @@ GameObject:
   - component: {fileID: 335371044}
   - component: {fileID: 335371043}
   - component: {fileID: 335371045}
+  - component: {fileID: 335371046}
+  - component: {fileID: 335371047}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -495,6 +497,38 @@ MonoBehaviour:
   startingStamina: 100
   staminaRegeneration: 20
   regenerationDelay: 0.75
+--- !u!114 &335371046
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 335371038}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73ff7aa3952886f4fa5af6332d7553bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponController
+  weaponId: pistol
+  fallbackDefinition: {fileID: 0}
+  inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  muzzle: {fileID: 0}
+  shotDistance: 100
+  shotMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!114 &335371047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 335371038}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0d3bb804b82c0849a568bd4b529f86d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Magazine
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0

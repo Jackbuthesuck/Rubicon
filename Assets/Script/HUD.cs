@@ -6,6 +6,7 @@ public sealed class HUD : MonoBehaviour
     [Header("Target")]
     [SerializeField] private PlayerController player;
     [SerializeField] private PlayerVitals vitals;
+    [SerializeField] private WeaponController weaponController;
 
     [Header("Player Display")]
     [SerializeField] private string playerName = "PLAYER";
@@ -65,6 +66,15 @@ public sealed class HUD : MonoBehaviour
         {
             crosshair.SetAiming(player.IsAiming);
         }
+
+        if (weaponController != null && ammoWidget != null)
+        {
+            ammoWidget.SetDisplay(
+                weaponController.DisplayName,
+                weaponController.ReserveAmmo,
+                weaponController.MagazineAmmo,
+                weaponController.ChamberAmmo);
+        }
     }
 
     private void ResolveTarget()
@@ -77,6 +87,10 @@ public sealed class HUD : MonoBehaviour
         if (vitals == null && player != null)
         {
             vitals = player.GetComponent<PlayerVitals>();
+        }
+        if (weaponController == null)
+        {
+            weaponController = FindFirstObjectByType<WeaponController>();
         }
     }
 
@@ -136,10 +150,10 @@ public sealed class HUD : MonoBehaviour
             label.SetAllDirty();
         }
 
-        healthBar = content?.Find("HealthBar")?.GetComponent<BarWidget>();
-        staminaBar = content?.Find("StaminaBar")?.GetComponent<BarWidget>();
-        crosshair = content?.Find("Crosshair")?.GetComponent<CrosshairWidget>();
-        ammoWidget = content?.Find("AmmoDisplay")?.GetComponent<AmmoWidget>();
+        healthBar = FindHudComponent<BarWidget>(content, "HealthBar");
+        staminaBar = FindHudComponent<BarWidget>(content, "StaminaBar");
+        crosshair = FindHudComponent<CrosshairWidget>(content, "Crosshair");
+        ammoWidget = FindHudComponent<AmmoWidget>(content, "AmmoGroup");
 
         if (healthBar == null || staminaBar == null || crosshair == null)
         {
@@ -172,19 +186,22 @@ public sealed class HUD : MonoBehaviour
             crosshair.Initialize(pieces);
         }
 
-        Text playerNameText = content?.Find("PlayerName")?.GetComponent<Text>();
+        Text playerNameText = FindHudComponent<Text>(content, "PlayerName");
         if (playerNameText != null)
         {
+            playerNameText.resizeTextForBestFit = true;
+            playerNameText.resizeTextMinSize = 18;
+            playerNameText.resizeTextMaxSize = 32;
             playerNameText.text = playerName;
+            playerNameText.SetAllDirty();
         }
 
         if (ammoWidget != null)
         {
-            Text reserveText = ammoWidget.transform.Find("ReserveAmmo")?.GetComponent<Text>();
-            Text chamberText = ammoWidget.transform.Find("ChamberAmmo")?.GetComponent<Text>();
-            Text weaponText = ammoWidget.transform.Find("WeaponName")?.GetComponent<Text>();
-            Text[] icons = ammoWidget.transform.Find("MagazineIcons")?.GetComponentsInChildren<Text>(true);
-            ammoWidget.Initialize(reserveText, chamberText, weaponText, icons);
+            Text reserveText = FindHudComponent<Text>(content, "ReserveAmmo");
+            Text magazineDisplay = FindHudComponent<Text>(content, "MagazineDisplay");
+            Text weaponText = FindHudComponent<Text>(content, "WeaponName");
+            ammoWidget.Initialize(reserveText, magazineDisplay, weaponText);
             ammoWidget.SetDisplay(weaponName, reserveAmmo, magazineAmmo, chamberAmmo);
         }
 
@@ -195,6 +212,29 @@ public sealed class HUD : MonoBehaviour
         }
 
         Canvas.ForceUpdateCanvases();
+    }
+
+    private static T FindHudComponent<T>(Transform root, string objectName) where T : Component
+    {
+        return FindHudTransform(root, objectName)?.GetComponent<T>();
+    }
+
+    private static Transform FindHudTransform(Transform root, string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (child != root && child.name == objectName)
+            {
+                return child;
+            }
+        }
+
+        return null;
     }
 
     private void BuildRuntimeUI()

@@ -1,0 +1,11 @@
+{
+  "id": "pistol",
+  "displayName": "PISTOL",
+  "magazineCapacity": 12,
+  "startingMagazineAmmo": 12,
+  "startingReserveAmmo": 120,
+  "roundsPerMinute": 600,
+  "reloadDuration": 1.2,
+  "automatic": false,
+  "isTopLoad": false
+}

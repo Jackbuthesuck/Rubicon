@@ -1,0 +1,11 @@
+{
+  "id": "glock19",
+  "displayName": "GLOCK 19",
+  "magazineCapacity": 15,
+  "startingMagazineAmmo": 15,
+  "startingReserveAmmo": 120,
+  "roundsPerMinute": 450,
+  "reloadDuration": 1.2,
+  "automatic": false,
+  "isTopLoad": false
+}

@@ -4,17 +4,22 @@ using UnityEngine.UI;
 public sealed class AmmoWidget : MonoBehaviour
 {
     [SerializeField] private Text reserveAmmoText;
-    [SerializeField] private Text chamberAmmoText;
+    [SerializeField] private Text magazineDisplayText;
     [SerializeField] private Text weaponText;
-    [SerializeField] private Text[] magazineIcons;
-    [SerializeField, Min(1)] private int triangleThreshold = 20;
+    [SerializeField, Min(1)] private int magazineDisplayCapacity = 20;
+    [SerializeField, Min(0.01f)] private float lowAmmoPulseSpeed = 5f;
+    [SerializeField] private Color lowAmmoPulseColor = Color.red;
+    private Color magazineDisplayColor = Color.white;
 
-    public void Initialize(Text reserveText, Text chamberText, Text weaponLabel, Text[] icons)
+    public void Initialize(Text reserveText, Text magazineDisplay, Text weaponLabel)
     {
         reserveAmmoText = reserveText;
-        chamberAmmoText = chamberText;
+        magazineDisplayText = magazineDisplay;
         weaponText = weaponLabel;
-        magazineIcons = icons;
+        if (magazineDisplayText != null)
+        {
+            magazineDisplayColor = magazineDisplayText.color;
+        }
     }
 
     public void SetDisplay(string weaponName, int reserveAmmo, int magazineAmmo, int chamberAmmo)
@@ -29,31 +34,40 @@ public sealed class AmmoWidget : MonoBehaviour
             reserveAmmoText.text = Mathf.Max(0, reserveAmmo).ToString();
         }
 
-        if (chamberAmmoText != null)
+        if (magazineDisplayText != null)
         {
-            chamberAmmoText.text = $"|+{Mathf.Max(0, chamberAmmo)}";
-        }
+            int capacity = Mathf.Max(1, magazineDisplayCapacity);
+            int loadedAmmo = Mathf.Clamp(magazineAmmo, 0, capacity);
+            int emptyAmmo = capacity - loadedAmmo;
+            int lowAmmoThreshold = capacity > 20
+                ? 10
+                : Mathf.Max(0, Mathf.FloorToInt(capacity * 0.5f) - 1);
 
-        if (magazineIcons == null)
+            string loadedSlots = new string('|', loadedAmmo);
+            string emptySlots = $"<color=#000000>{new string('|', emptyAmmo)}</color>";
+            magazineDisplayText.text = $"{loadedSlots}{emptySlots}|+{Mathf.Max(0, chamberAmmo)}";
+            magazineDisplayText.color = magazineDisplayColor;
+            magazineDisplayText.gameObject.SetActive(true);
+            lowAmmoPulseActive = magazineAmmo < lowAmmoThreshold;
+        }
+    }
+
+    private bool lowAmmoPulseActive;
+
+    private void Update()
+    {
+        if (magazineDisplayText == null)
         {
             return;
         }
 
-        bool useTriangle = magazineAmmo > triangleThreshold;
-        int visibleIconCount = useTriangle ? 1 : Mathf.Clamp(magazineAmmo, 0, magazineIcons.Length);
-        for (int iconIndex = 0; iconIndex < magazineIcons.Length; iconIndex++)
+        if (!lowAmmoPulseActive)
         {
-            Text icon = magazineIcons[iconIndex];
-            if (icon == null)
-            {
-                continue;
-            }
-
-            icon.gameObject.SetActive(iconIndex < visibleIconCount);
-            if (iconIndex < visibleIconCount)
-            {
-                icon.text = useTriangle ? ">" : "|";
-            }
+            magazineDisplayText.color = magazineDisplayColor;
+            return;
         }
+
+        float pulse = (Mathf.Sin(Time.unscaledTime * lowAmmoPulseSpeed) + 1f) * 0.5f;
+        magazineDisplayText.color = Color.Lerp(magazineDisplayColor, lowAmmoPulseColor, pulse);
     }
 }

@@ -1,0 +1,11 @@
+{
+  "id": "kriss_vector",
+  "displayName": "KRISS VECTOR",
+  "magazineCapacity": 30,
+  "startingMagazineAmmo": 30,
+  "startingReserveAmmo": 180,
+  "roundsPerMinute": 1200,
+  "reloadDuration": 1.5,
+  "automatic": true,
+  "isTopLoad": false
+}

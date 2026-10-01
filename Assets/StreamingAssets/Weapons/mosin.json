@@ -1,0 +1,11 @@
+{
+  "id": "mosin",
+  "displayName": "MOSIN-NAGANT",
+  "magazineCapacity": 5,
+  "startingMagazineAmmo": 5,
+  "startingReserveAmmo": 40,
+  "roundsPerMinute": 45,
+  "reloadDuration": 2.2,
+  "automatic": false,
+  "isTopLoad": true
+}

@@ -1,0 +1,11 @@
+{
+  "id": "vpo74",
+  "displayName": "VPO-74",
+  "magazineCapacity": 10,
+  "startingMagazineAmmo": 10,
+  "startingReserveAmmo": 60,
+  "roundsPerMinute": 120,
+  "reloadDuration": 1.8,
+  "automatic": false,
+  "isTopLoad": false
+}

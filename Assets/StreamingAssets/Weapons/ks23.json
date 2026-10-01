@@ -1,0 +1,11 @@
+{
+  "id": "ks23",
+  "displayName": "KS-23",
+  "magazineCapacity": 4,
+  "startingMagazineAmmo": 4,
+  "startingReserveAmmo": 24,
+  "roundsPerMinute": 70,
+  "reloadDuration": 0.8,
+  "automatic": false,
+  "isTopLoad": true
+}
