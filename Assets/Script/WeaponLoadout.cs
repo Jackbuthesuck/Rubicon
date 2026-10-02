@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [System.Serializable]
 public sealed class WeaponModelEntry
@@ -15,6 +16,7 @@ public sealed class WeaponLoadout : MonoBehaviour
     [SerializeField] private WeaponModelEntry[] weaponModels;
     [SerializeField] private GameObject fallbackWeaponModel;
     [SerializeField, Min(0)] private int startingSlot;
+    [SerializeField] private bool enableKeyboardTesting = true;
 
     private readonly List<WeaponController> weapons = new List<WeaponController>();
     private readonly Dictionary<WeaponController, GameObject> weaponRoots = new Dictionary<WeaponController, GameObject>();
@@ -62,6 +64,27 @@ public sealed class WeaponLoadout : MonoBehaviour
         }
 
         IsReady = true;
+    }
+
+    private void Update()
+    {
+        if (!enableKeyboardTesting || Keyboard.current == null || weapons.Count == 0)
+        {
+            return;
+        }
+
+        Key[] numberKeys =
+        {
+            Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9
+        };
+        for (int keyIndex = 0; keyIndex < numberKeys.Length; keyIndex++)
+        {
+            if (Keyboard.current[numberKeys[keyIndex]].wasPressedThisFrame)
+            {
+                SelectWeapon(keyIndex);
+                return;
+            }
+        }
     }
 
     public bool SelectWeapon(int slot)
@@ -133,6 +156,17 @@ public sealed class WeaponLoadout : MonoBehaviour
 
     private void CollectExistingWeapons()
     {
+        if (HasConfiguredWeaponPrefabs())
+        {
+            WeaponController[] configuredChildWeapons = GetComponentsInChildren<WeaponController>(true);
+            foreach (WeaponController weapon in configuredChildWeapons)
+            {
+                weapon.SetEquipped(false);
+            }
+
+            return;
+        }
+
         if (startingWeapons != null && startingWeapons.Length > 0)
         {
             foreach (WeaponController weapon in startingWeapons)
@@ -151,6 +185,24 @@ public sealed class WeaponLoadout : MonoBehaviour
                 AddWeapon(weapon);
             }
         }
+    }
+
+    private bool HasConfiguredWeaponPrefabs()
+    {
+        if (weaponPrefabs == null)
+        {
+            return false;
+        }
+
+        foreach (WeaponController weaponPrefab in weaponPrefabs)
+        {
+            if (weaponPrefab != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void CreateConfiguredWeapons()
@@ -173,7 +225,7 @@ public sealed class WeaponLoadout : MonoBehaviour
                 instanceObject.transform.localPosition = new Vector3(0.6f, 0f, 0f);
                 WeaponController instance = instanceObject.GetComponentInChildren<WeaponController>(true);
                 instanceObject.SetActive(false);
-                AddWeapon(instance);
+                AddWeapon(instance, instanceObject);
             }
             catch (MissingReferenceException)
             {
@@ -184,11 +236,15 @@ public sealed class WeaponLoadout : MonoBehaviour
 
     private void AddWeapon(WeaponController weapon)
     {
+        AddWeapon(weapon, weapon != null ? weapon.transform.root.gameObject : null);
+    }
+
+    private void AddWeapon(WeaponController weapon, GameObject weaponRoot)
+    {
         if (weapon != null && !weapons.Contains(weapon))
         {
             weapons.Add(weapon);
-            GameObject weaponRoot = weapon.transform.root.gameObject;
-            if (weaponRoot != gameObject)
+            if (weaponRoot != null && weaponRoot != gameObject)
             {
                 weaponRoots[weapon] = weaponRoot;
                 weaponRoot.transform.localPosition = new Vector3(0.6f, 0f, 0f);

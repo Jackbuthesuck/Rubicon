@@ -1,0 +1,12 @@
+{
+  "id": "5.56x45",
+  "displayName": "5.56x45 NATO M855 Ball",
+  "damage": 34,
+  "pellets": 1,
+  "moa": 2.5,
+  "projectileSpeed": 915,
+  "recoil": 4.5,
+  "penetration": 300,
+  "vpamLevel": "PM3",
+  "penetrationRangeMeters": "0-100"
+}

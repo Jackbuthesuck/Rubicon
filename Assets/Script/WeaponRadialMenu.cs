@@ -29,7 +29,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
     private GameObject primaryMenuRoot;
     private GameObject secondaryMenuRoot;
     private Font font;
-    private Vector2 selectionDirection = new Vector2(1f, -1f).normalized;
+    private Vector2 selectionDirection = Vector2.zero;
     private bool wheelWasPressed;
     private bool pendingPrimaryWheel;
     private int pendingSelectionSlot = -1;
@@ -132,7 +132,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
         bool wheelPressed = primaryPressed || secondaryPressed;
         if (wheelPressed && !wheelWasPressed)
         {
-            selectionDirection = new Vector2(1f, -1f).normalized;
+            selectionDirection = Vector2.zero;
             pendingSelectionSlot = -1;
         }
 

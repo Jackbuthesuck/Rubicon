@@ -59,6 +59,8 @@ public sealed class PauseMenu : MonoBehaviour
     private IDisposable inputDeviceSubscription;
     private bool isPaused;
 
+    public float TitlePulseSpeed => titlePulseSpeed;
+
     private void Awake()
     {
         if (!Application.isPlaying)
@@ -510,12 +512,6 @@ public sealed class PauseMenu : MonoBehaviour
     {
         if (pauseTitle == null)
         {
-            return;
-        }
-
-        if (inventoryOpen || inventoryOpening)
-        {
-            SetPauseTitleOpacity(1f);
             return;
         }
 

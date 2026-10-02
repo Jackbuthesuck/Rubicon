@@ -67,9 +67,14 @@ public sealed class WeaponController : MonoBehaviour
     private AmmoDefinition ammoDefinition;
     private PlayerController playerController;
     private float nextShotTime;
+    private float chamberStartedAt;
+    private float chamberUntil;
     private float reloadUntil;
+    private float reloadStartedAt;
     private bool equipped = true;
     private Transform visualModel;
+
+    public event Action<float> ShotFired;
 
     public string DisplayName => definition != null ? definition.displayName : weaponId;
     public string WeaponId => definition != null ? definition.id : weaponId;
@@ -91,6 +96,32 @@ public sealed class WeaponController : MonoBehaviour
     public string AmmoId => ammoDefinition != null ? ammoDefinition.id : string.Empty;
     public AmmoDefinition Ammo => ammoDefinition;
     public bool IsReloading => reloadUntil > Time.time;
+    public float ReloadProgress
+    {
+        get
+        {
+            if (!IsReloading || definition == null)
+            {
+                return 0f;
+            }
+
+            float duration = Mathf.Max(0.05f, definition.reloadDuration);
+            return Mathf.Clamp01((Time.time - reloadStartedAt) / duration);
+        }
+    }
+    public float ChamberProgress
+    {
+        get
+        {
+            if (definition == null || definition.automatic || chamberUntil <= Time.time)
+            {
+                return 0f;
+            }
+
+            float duration = Mathf.Max(0.05f, chamberUntil - chamberStartedAt);
+            return Mathf.Clamp01((Time.time - chamberStartedAt) / duration);
+        }
+    }
 
     public void SetEquipped(bool isEquipped)
     {
@@ -129,12 +160,6 @@ public sealed class WeaponController : MonoBehaviour
         reloadAction?.Enable();
     }
 
-    private void OnDisable()
-    {
-        shootAction?.Disable();
-        reloadAction?.Disable();
-    }
-
     private void Update()
     {
         if (!equipped)
@@ -144,13 +169,7 @@ public sealed class WeaponController : MonoBehaviour
 
         UpdateAimModel();
 
-        bool reloadPressed = reloadAction != null && reloadAction.WasPressedThisFrame();
-        if (reloadAction == null && Keyboard.current != null)
-        {
-            reloadPressed = Keyboard.current.rKey.wasPressedThisFrame;
-        }
-
-        if (reloadPressed)
+        if (ReloadPressedThisFrame())
         {
             BeginReload();
         }
@@ -162,25 +181,21 @@ public sealed class WeaponController : MonoBehaviour
                 bool loaded = magazine.Reload(definition.isTopLoad);
                 if (definition.isTopLoad && loaded && magazine.CurrentAmmo < magazine.Capacity && magazine.ReserveAmmo > 0)
                 {
-                    reloadUntil = Time.time + Mathf.Max(0.05f, definition.reloadDuration);
+                    StartReloadInterval();
                 }
                 else
                 {
                     reloadUntil = 0f;
+                    reloadStartedAt = 0f;
                 }
             }
 
             return;
         }
 
-        if (shootAction == null)
-        {
-            return;
-        }
-
         bool shouldShoot = definition.automatic
-            ? shootAction.IsPressed()
-            : shootAction.WasPressedThisFrame();
+            ? ShootHeld()
+            : ShootPressedThisFrame();
         if (shouldShoot)
         {
             TryShoot();
@@ -200,21 +215,44 @@ public sealed class WeaponController : MonoBehaviour
         }
 
         nextShotTime = Time.time + 60f / Mathf.Max(1f, definition.roundsPerMinute);
+        chamberStartedAt = Time.time;
+        chamberUntil = nextShotTime;
+        ShotFired?.Invoke(ammoDefinition != null ? ammoDefinition.recoil : 0f);
         Transform shotOrigin = muzzle != null ? muzzle : transform;
         Ray cameraRay = GetCameraCenterRay(shotOrigin.position);
-        Ray shotRay = new Ray(shotOrigin.position, cameraRay.direction);
+        Vector3 aimDirection = cameraRay.direction;
         if (Physics.Raycast(cameraRay, out RaycastHit aimHit, shotDistance, shotMask, QueryTriggerInteraction.Ignore))
         {
-            shotRay.direction = (aimHit.point - shotOrigin.position).normalized;
+            aimDirection = (aimHit.point - shotOrigin.position).normalized;
         }
-        if (Physics.Raycast(shotRay, out RaycastHit hit, shotDistance, shotMask, QueryTriggerInteraction.Ignore))
+
+        int pelletCount = Mathf.Max(1, ammoDefinition != null ? ammoDefinition.pellets : 1);
+        float spreadAngle = ammoDefinition != null ? Mathf.Max(0f, ammoDefinition.moa) / 60f : 0f;
+        for (int pelletIndex = 0; pelletIndex < pelletCount; pelletIndex++)
         {
-            DrawTracer(shotRay.origin, hit.point);
+            Vector3 pelletDirection = GetSpreadDirection(aimDirection, spreadAngle);
+            Ray pelletRay = new Ray(shotOrigin.position, pelletDirection);
+            if (Physics.Raycast(pelletRay, out RaycastHit hit, shotDistance, shotMask, QueryTriggerInteraction.Ignore))
+            {
+                DrawTracer(pelletRay.origin, hit.point);
+            }
+            else
+            {
+                DrawTracer(pelletRay.origin, pelletRay.origin + pelletRay.direction * shotDistance);
+            }
         }
-        else
+    }
+
+    private static Vector3 GetSpreadDirection(Vector3 aimDirection, float spreadAngle)
+    {
+        if (spreadAngle <= 0f)
         {
-            DrawTracer(shotRay.origin, shotRay.origin + shotRay.direction * shotDistance);
+            return aimDirection.normalized;
         }
+
+        Quaternion aimRotation = Quaternion.LookRotation(aimDirection.normalized, Vector3.up);
+        Vector2 spread = UnityEngine.Random.insideUnitCircle * Mathf.Tan(spreadAngle * Mathf.Deg2Rad);
+        return (aimRotation * new Vector3(spread.x, spread.y, 1f)).normalized;
     }
 
     private void DrawTracer(Vector3 start, Vector3 end)
@@ -295,7 +333,39 @@ public sealed class WeaponController : MonoBehaviour
             return;
         }
 
+        StartReloadInterval();
+    }
+
+    private void StartReloadInterval()
+    {
+        reloadStartedAt = Time.time;
         reloadUntil = Time.time + Mathf.Max(0.05f, definition.reloadDuration);
+    }
+
+    private bool ReloadPressedThisFrame()
+    {
+        if (reloadAction != null)
+        {
+            return reloadAction.WasPressedThisFrame();
+        }
+
+        return Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
+    }
+
+    private bool ShootHeld()
+    {
+        bool actionHeld = shootAction != null && shootAction.IsPressed();
+        bool mouseHeld = Mouse.current != null && Mouse.current.leftButton.isPressed;
+        bool gamepadHeld = Gamepad.current != null && Gamepad.current.rightTrigger.isPressed;
+        return actionHeld || mouseHeld || gamepadHeld;
+    }
+
+    private bool ShootPressedThisFrame()
+    {
+        bool actionPressed = shootAction != null && shootAction.WasPressedThisFrame();
+        bool mousePressed = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+        bool gamepadPressed = Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame;
+        return actionPressed || mousePressed || gamepadPressed;
     }
 
     private WeaponDefinition LoadDefinition()

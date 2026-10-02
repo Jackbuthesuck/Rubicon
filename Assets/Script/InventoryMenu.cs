@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -19,6 +20,8 @@ public sealed class InventoryMenu : MonoBehaviour
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private int sortingOrder = 300;
     [SerializeField] private bool debugInputLogs = true;
+    [SerializeField, Range(0f, 1f)] private float titlePulsePhaseOffset = 0.37f;
+    [SerializeField, Range(0f, 1f)] private float titlePulseMinimumOpacity = 0.15f;
 
     private readonly List<WeaponController> visibleWeapons = new List<WeaponController>();
     private readonly Dictionary<Button, Image> equippedMarkers = new Dictionary<Button, Image>();
@@ -27,6 +30,15 @@ public sealed class InventoryMenu : MonoBehaviour
     private InputAction rightPageAction;
     private InputAction navigateAction;
     private InputAction submitAction;
+    private CanvasGroup pageTitleGroup;
+    private PauseMenu pauseMenu;
+    private Image promptBackground;
+    private Text promptText;
+    private Image equippedMarkerTemplate;
+    private IDisposable inputDeviceSubscription;
+    private bool promptInitialized;
+    private bool promptController;
+    private bool promptPlayStation;
     private float nextDebugStatusTime;
     private Coroutine refreshCoroutine;
 
@@ -50,7 +62,20 @@ public sealed class InventoryMenu : MonoBehaviour
 
         BindSceneLayout();
         BindPageActions();
+        pauseMenu = FindFirstObjectByType<PauseMenu>();
+        BindPrompt();
         Close();
+    }
+
+    private void OnEnable()
+    {
+        inputDeviceSubscription = InputSystem.onAnyButtonPress.Subscribe(new InputControlObserver(OnInputDeviceUsed));
+    }
+
+    private void OnDisable()
+    {
+        inputDeviceSubscription?.Dispose();
+        inputDeviceSubscription = null;
     }
 
     public void SetInputActions(InputActionAsset actions)
@@ -80,6 +105,7 @@ public sealed class InventoryMenu : MonoBehaviour
         {
             ContentRoot.SetActive(IsOpen);
         }
+        promptBackground?.gameObject.SetActive(IsOpen);
 
         if (IsOpen)
         {
@@ -153,6 +179,7 @@ public sealed class InventoryMenu : MonoBehaviour
         {
             ContentRoot.SetActive(false);
         }
+        promptBackground?.gameObject.SetActive(false);
     }
 
     private void BindPageActions()
@@ -183,18 +210,19 @@ public sealed class InventoryMenu : MonoBehaviour
         }
 
         LogInputStatus(false);
+        UpdateTitlePulse();
         UpdateButtonVisuals();
 
         if (WasLeftPagePressed())
         {
             LogInput($"L Page pressed. selectedBefore={GetSelectedName()}");
-            SelectAdjacentMainTab(-1);
+            SelectAdjacentMainTab(1);
             LogInput($"L Page selectedAfter={GetSelectedName()}");
         }
         else if (WasRightPagePressed())
         {
             LogInput($"R Page pressed. selectedBefore={GetSelectedName()}");
-            SelectAdjacentMainTab(1);
+            SelectAdjacentMainTab(-1);
             LogInput($"R Page selectedAfter={GetSelectedName()}");
         }
 
@@ -270,6 +298,9 @@ public sealed class InventoryMenu : MonoBehaviour
             ? equipmentList.GetComponentsInChildren<Button>(true)
             : new Button[0];
         EnsureEquipmentSlots();
+        equippedMarkerTemplate = equipmentSlots.Length > 0 && equipmentSlots[0] != null
+            ? equipmentSlots[0].transform.Find("EquippedMarker")?.GetComponent<Image>()
+            : null;
 
         Transform mainTabRail = FindDescendant(contentRoot, "MainTabs");
         mainTabButtons = mainTabRail != null
@@ -288,6 +319,97 @@ public sealed class InventoryMenu : MonoBehaviour
             tabButton.onClick.RemoveAllListeners();
             tabButton.onClick.AddListener(() => SelectMainTab(tabId));
             SetButtonLabel(tabButton, tabId);
+        }
+
+        if (pageTitle != null)
+        {
+            pageTitleGroup = pageTitle.GetComponent<CanvasGroup>();
+            if (pageTitleGroup == null)
+            {
+                pageTitleGroup = pageTitle.gameObject.AddComponent<CanvasGroup>();
+            }
+        }
+    }
+
+    private void BindPrompt()
+    {
+        Transform promptTransform = FindDescendant(contentRoot, "PromptBar");
+        promptBackground = promptTransform != null ? promptTransform.GetComponent<Image>() : null;
+        promptText = promptTransform != null ? promptTransform.GetComponentInChildren<Text>(true) : null;
+        if (promptText != null)
+        {
+            promptText.supportRichText = true;
+            UpdatePrompt(false, false);
+        }
+    }
+
+    private void OnInputDeviceUsed(InputControl control)
+    {
+        if (control.device is Gamepad gamepad)
+        {
+            UpdatePrompt(true, IsPlayStationDevice(gamepad));
+        }
+        else if (control.device is Keyboard)
+        {
+            UpdatePrompt(false, false);
+        }
+    }
+
+    private static bool IsPlayStationDevice(InputDevice device)
+    {
+        string description = $"{device.layout} {device.displayName} {device.description.manufacturer} "
+            + $"{device.description.product} {device.description.interfaceName}";
+        description = description.ToLowerInvariant();
+        return description.Contains("dualshock")
+            || description.Contains("dualsense")
+            || description.Contains("playstation")
+            || description.Contains("ps4")
+            || description.Contains("ps5")
+            || description.Contains("wireless controller");
+    }
+
+    private void UpdatePrompt(bool controller, bool playStation)
+    {
+        if (promptText == null || (promptInitialized && promptController == controller && promptPlayStation == playStation))
+        {
+            return;
+        }
+
+        promptInitialized = true;
+        promptController = controller;
+        promptPlayStation = playStation;
+        promptText.text = controller
+            ? playStation
+                ? "<color=#E53935>○</color>  <color=#FFFFFF>BACK</color>    <color=#1976D2>×</color>  <color=#FFFFFF>SELECT</color>    <color=#9E9E9E>D-PAD</color>  <color=#FFFFFF>NAVIGATE</color>"
+                : "<color=#E53935>B</color>  <color=#FFFFFF>BACK</color>    <color=#43A047>A</color>  <color=#FFFFFF>SELECT</color>    <color=#9E9E9E>DPAD</color>  <color=#FFFFFF>NAVIGATE</color>"
+            : "<color=#FF0000>ESC</color>  <color=#FFFFFF>BACK</color>    <color=#FF0000>ENTER</color>  <color=#FFFFFF>SELECT</color>    <color=#FF0000>W/S</color>  <color=#FFFFFF>NAVIGATE</color>";
+        promptText.color = Color.white;
+        if (promptBackground != null)
+        {
+            promptBackground.gameObject.SetActive(IsOpen);
+        }
+    }
+
+    private sealed class InputControlObserver : IObserver<InputControl>
+    {
+        private readonly Action<InputControl> onNext;
+
+        public InputControlObserver(Action<InputControl> onNext)
+        {
+            this.onNext = onNext;
+        }
+
+        public void OnNext(InputControl value)
+        {
+            onNext(value);
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnCompleted()
+        {
         }
     }
 
@@ -364,7 +486,7 @@ public sealed class InventoryMenu : MonoBehaviour
             }
 
             WeaponController selectedWeapon = visibleWeapons[slotIndex];
-            SetButtonLabel(slot, $"{GetCategoryLabel(selectedWeapon.Category)}   {selectedWeapon.DisplayName}   {selectedWeapon.MagazineAmmo}/{selectedWeapon.ReserveAmmo}");
+            SetButtonLabel(slot, $"{selectedWeapon.DisplayName}   {selectedWeapon.MagazineAmmo}/{selectedWeapon.ReserveAmmo}");
             ConfigureEquipmentButton(slot);
             SetEquippedMarker(slot, loadout.IsSelectedForWheel(selectedWeapon));
             slot.onClick.AddListener(() => ToggleInventoryWheelSelection(loadout, selectedWeapon));
@@ -443,9 +565,16 @@ public sealed class InventoryMenu : MonoBehaviour
             {
                 if (tabButton.targetGraphic != null)
                 {
-                    tabButton.targetGraphic.color = GetTabId(tabIndex) == selectedMainTab
+                    bool isCurrentTab = GetTabId(tabIndex) == selectedMainTab;
+                    tabButton.targetGraphic.color = isCurrentTab
                         ? new Color(1f, 0.34f, 0.04f, 1f)
                         : Color.black;
+
+                    Text tabLabel = tabButton.GetComponentInChildren<Text>(true);
+                    if (tabLabel != null)
+                    {
+                        tabLabel.color = isCurrentTab ? Color.black : Color.white;
+                    }
                 }
 
                 Navigation navigation = tabButton.navigation;
@@ -547,6 +676,22 @@ public sealed class InventoryMenu : MonoBehaviour
                     ? new Color(1f, 0.34f, 0.04f, 1f)
                     : Color.black;
             }
+        }
+    }
+
+    private void UpdateTitlePulse()
+    {
+        if (pageTitle == null)
+        {
+            return;
+        }
+
+        float pulseSpeed = pauseMenu != null ? pauseMenu.TitlePulseSpeed : 0.5f;
+        float sawtooth = Mathf.Repeat(Time.unscaledTime * pulseSpeed + titlePulsePhaseOffset, 1f);
+        float opacity = Mathf.Lerp(titlePulseMinimumOpacity, 1f, sawtooth);
+        if (pageTitleGroup != null)
+        {
+            pageTitleGroup.alpha = opacity;
         }
     }
 
@@ -664,17 +809,19 @@ public sealed class InventoryMenu : MonoBehaviour
     {
         if (!equippedMarkers.TryGetValue(button, out Image marker) || marker == null)
         {
-            GameObject markerObject = new GameObject("EquippedMarker", typeof(RectTransform), typeof(Image));
-            markerObject.transform.SetParent(button.transform, false);
-            RectTransform markerRect = markerObject.GetComponent<RectTransform>();
-            markerRect.anchorMin = new Vector2(0f, 0f);
-            markerRect.anchorMax = new Vector2(0f, 1f);
-            markerRect.pivot = new Vector2(0f, 0.5f);
-            markerRect.anchoredPosition = new Vector2(8f, 0f);
-            markerRect.sizeDelta = new Vector2(6f, -16f);
-            marker = markerObject.GetComponent<Image>();
-            marker.color = Color.white;
-            marker.raycastTarget = false;
+            marker = button.transform.Find("EquippedMarker")?.GetComponent<Image>();
+            if (marker == null && equippedMarkerTemplate != null && button != equippedMarkerTemplate.GetComponentInParent<Button>())
+            {
+                GameObject markerObject = Instantiate(equippedMarkerTemplate.gameObject, button.transform, false);
+                markerObject.name = "EquippedMarker";
+                marker = markerObject.GetComponent<Image>();
+            }
+
+            if (marker == null)
+            {
+                return;
+            }
+
             equippedMarkers[button] = marker;
         }
 
@@ -683,7 +830,7 @@ public sealed class InventoryMenu : MonoBehaviour
 
     private static string GetTabId(int tabIndex)
     {
-        string[] tabIds = { "PRIMARY", "SECONDARY", "ITEMS", "EQUIPMENT", "OTHER" };
+        string[] tabIds = { "OTHER", "EQUIPMENT", "ITEMS", "SECONDARY", "PRIMARY" };
         return tabIndex >= 0 && tabIndex < tabIds.Length ? tabIds[tabIndex] : "OTHER";
     }
 
@@ -736,10 +883,4 @@ public sealed class InventoryMenu : MonoBehaviour
         }
     }
 
-    private static string GetCategoryLabel(WeaponCategory category)
-    {
-        return category == WeaponCategory.SR || category == WeaponCategory.AR || category == WeaponCategory.LMG
-            ? "PRIMARY"
-            : "SECONDARY";
-    }
 }

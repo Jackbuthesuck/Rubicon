@@ -1,0 +1,14 @@
+{
+  "id": "m249",
+  "displayName": "M249 SAW",
+  "ammoId": "5.56x45",
+  "modelId": "m249_model_missing",
+  "magazineCapacity": 100,
+  "startingMagazineAmmo": 100,
+  "startingReserveAmmo": 400,
+  "roundsPerMinute": 850,
+  "reloadDuration": 3.2,
+  "automatic": true,
+  "isTopLoad": false,
+  "category": "LMG"
+}

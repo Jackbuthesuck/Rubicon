@@ -7,6 +7,7 @@ public sealed class HUD : MonoBehaviour
     [SerializeField] private PlayerController player;
     [SerializeField] private PlayerVitals vitals;
     [SerializeField] private WeaponController weaponController;
+    [SerializeField] private WeaponLoadout loadout;
 
     [Header("Player Display")]
     [SerializeField] private string playerName = "PLAYER";
@@ -35,6 +36,7 @@ public sealed class HUD : MonoBehaviour
     private BarWidget staminaBar;
     private CrosshairWidget crosshair;
     private AmmoWidget ammoWidget;
+    private WeaponController recoilWeapon;
 
     private void Awake()
     {
@@ -58,13 +60,23 @@ public sealed class HUD : MonoBehaviour
             vitals.HealthChanged -= OnHealthChanged;
             vitals.StaminaChanged -= OnStaminaChanged;
         }
+
+        BindRecoilWeapon(null);
     }
 
     private void Update()
     {
+        if (loadout != null && loadout.ActiveWeapon != null)
+        {
+            weaponController = loadout.ActiveWeapon;
+        }
+
+        BindRecoilWeapon(weaponController);
+
         if (player != null && crosshair != null)
         {
-            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed);
+            WeaponCategory category = weaponController != null ? weaponController.Category : WeaponCategory.HG;
+            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed, category);
         }
 
         if (weaponController != null && ammoWidget != null)
@@ -73,8 +85,35 @@ public sealed class HUD : MonoBehaviour
                 weaponController.DisplayName,
                 weaponController.ReserveAmmo,
                 weaponController.MagazineAmmo,
-                weaponController.ChamberAmmo);
+                weaponController.ChamberAmmo,
+                weaponController.MagazineCapacity,
+                weaponController.ReloadProgress,
+                weaponController.ChamberProgress);
         }
+    }
+
+    private void BindRecoilWeapon(WeaponController weapon)
+    {
+        if (recoilWeapon == weapon)
+        {
+            return;
+        }
+
+        if (recoilWeapon != null)
+        {
+            recoilWeapon.ShotFired -= OnShotFired;
+        }
+
+        recoilWeapon = weapon;
+        if (recoilWeapon != null)
+        {
+            recoilWeapon.ShotFired += OnShotFired;
+        }
+    }
+
+    private void OnShotFired(float recoil)
+    {
+        crosshair?.AddRecoil(recoil);
     }
 
     private void ResolveTarget()
@@ -88,9 +127,17 @@ public sealed class HUD : MonoBehaviour
         {
             vitals = player.GetComponent<PlayerVitals>();
         }
+        if (loadout == null && player != null)
+        {
+            loadout = player.GetComponent<WeaponLoadout>();
+        }
         if (weaponController == null)
         {
-            weaponController = FindFirstObjectByType<WeaponController>();
+            weaponController = loadout != null ? loadout.ActiveWeapon : FindFirstObjectByType<WeaponController>();
+        }
+        if (loadout != null && loadout.ActiveWeapon != null)
+        {
+            weaponController = loadout.ActiveWeapon;
         }
     }
 
@@ -202,7 +249,7 @@ public sealed class HUD : MonoBehaviour
             Text magazineDisplay = FindHudComponent<Text>(content, "MagazineDisplay");
             Text weaponText = FindHudComponent<Text>(content, "WeaponName");
             ammoWidget.Initialize(reserveText, magazineDisplay, weaponText);
-            ammoWidget.SetDisplay(weaponName, reserveAmmo, magazineAmmo, chamberAmmo);
+            ammoWidget.SetDisplay(weaponName, reserveAmmo, magazineAmmo, chamberAmmo, magazineAmmo, 0f, 0f);
         }
 
         if (vitals != null)
