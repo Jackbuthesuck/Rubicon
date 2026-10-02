@@ -62,7 +62,7 @@ public sealed class InventoryMenu : MonoBehaviour
 
         BindSceneLayout();
         BindPageActions();
-        pauseMenu = FindFirstObjectByType<PauseMenu>();
+        pauseMenu = FindAnyObjectByType<PauseMenu>();
         BindPrompt();
         Close();
     }
@@ -144,7 +144,7 @@ public sealed class InventoryMenu : MonoBehaviour
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem == null)
         {
-            eventSystem = FindFirstObjectByType<EventSystem>();
+            eventSystem = FindAnyObjectByType<EventSystem>();
         }
 
         if (eventSystem == null)
@@ -499,13 +499,13 @@ public sealed class InventoryMenu : MonoBehaviour
 
     private static WeaponLoadout FindLoadout()
     {
-        WeaponLoadout loadout = FindFirstObjectByType<WeaponLoadout>(FindObjectsInactive.Include);
+        WeaponLoadout loadout = FindAnyObjectByType<WeaponLoadout>(FindObjectsInactive.Include);
         if (loadout != null)
         {
             return loadout;
         }
 
-        PlayerController player = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+        PlayerController player = FindAnyObjectByType<PlayerController>(FindObjectsInactive.Include);
         return player != null ? player.GetComponent<WeaponLoadout>() : null;
     }
 

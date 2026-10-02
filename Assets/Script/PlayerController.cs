@@ -21,6 +21,7 @@ public sealed class PlayerController : MonoBehaviour
     [SerializeField] private Transform movementReference;
 
     private CharacterController characterController;
+    private CameraController cameraController;
     private InputAction moveAction;
     private InputAction aimAction;
     private Vector3 planarVelocity;
@@ -38,6 +39,11 @@ public sealed class PlayerController : MonoBehaviour
         if (movementReference == null && Camera.main != null)
         {
             movementReference = Camera.main.transform;
+        }
+
+        if (movementReference != null)
+        {
+            cameraController = movementReference.GetComponent<CameraController>();
         }
 
         if (inputActions == null)
@@ -86,8 +92,8 @@ public sealed class PlayerController : MonoBehaviour
 
     private Vector3 GetCameraRelativeDirection(Vector2 input)
     {
-        Vector3 referenceForward = movementReference != null ? movementReference.forward : Vector3.forward;
-        Vector3 referenceRight = movementReference != null ? movementReference.right : Vector3.right;
+        Vector3 referenceForward = cameraController != null ? cameraController.MovementForward : movementReference != null ? movementReference.forward : Vector3.forward;
+        Vector3 referenceRight = cameraController != null ? cameraController.MovementRight : movementReference != null ? movementReference.right : Vector3.right;
 
         referenceForward.y = 0f;
         referenceRight.y = 0f;

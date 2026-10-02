@@ -12,7 +12,7 @@ public sealed class Magazine : MonoBehaviour
         Capacity = Mathf.Max(1, capacity);
         CurrentAmmo = Mathf.Clamp(currentAmmo, 0, Capacity);
         ReserveAmmo = Mathf.Max(0, reserveAmmo);
-        Chambered = chambered && CurrentAmmo > 0;
+        Chambered = chambered;
     }
 
     public bool CanFire => Chambered;
@@ -24,8 +24,13 @@ public sealed class Magazine : MonoBehaviour
             return false;
         }
 
-        CurrentAmmo = Mathf.Max(0, CurrentAmmo - 1);
-        Chambered = CurrentAmmo > 0;
+        Chambered = false;
+        if (CurrentAmmo > 0)
+        {
+            CurrentAmmo--;
+            Chambered = true;
+        }
+
         return true;
     }
 
@@ -40,7 +45,18 @@ public sealed class Magazine : MonoBehaviour
         roundsLoaded = Mathf.Min(roundsLoaded, ReserveAmmo);
         CurrentAmmo += roundsLoaded;
         ReserveAmmo -= roundsLoaded;
-        Chambered = CurrentAmmo > 0;
         return roundsLoaded > 0;
+    }
+
+    public bool ChamberRound()
+    {
+        if (Chambered || CurrentAmmo <= 0)
+        {
+            return false;
+        }
+
+        CurrentAmmo--;
+        Chambered = true;
+        return true;
     }
 }

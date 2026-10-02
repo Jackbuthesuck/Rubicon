@@ -76,7 +76,9 @@ public sealed class HUD : MonoBehaviour
         if (player != null && crosshair != null)
         {
             WeaponCategory category = weaponController != null ? weaponController.Category : WeaponCategory.HG;
-            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed, category);
+            bool aimBlocked = weaponController != null && weaponController.IsAimBlocked;
+            float chamberPressure = weaponController != null ? weaponController.CrosshairChamberPressure : 0f;
+            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed, category, aimBlocked, false, chamberPressure);
         }
 
         if (weaponController != null && ammoWidget != null)
@@ -120,7 +122,7 @@ public sealed class HUD : MonoBehaviour
     {
         if (player == null)
         {
-            player = FindFirstObjectByType<PlayerController>();
+            player = FindAnyObjectByType<PlayerController>();
         }
 
         if (vitals == null && player != null)
@@ -133,7 +135,7 @@ public sealed class HUD : MonoBehaviour
         }
         if (weaponController == null)
         {
-            weaponController = loadout != null ? loadout.ActiveWeapon : FindFirstObjectByType<WeaponController>();
+            weaponController = loadout != null ? loadout.ActiveWeapon : FindAnyObjectByType<WeaponController>();
         }
         if (loadout != null && loadout.ActiveWeapon != null)
         {

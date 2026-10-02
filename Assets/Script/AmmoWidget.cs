@@ -11,9 +11,13 @@ public sealed class AmmoWidget : MonoBehaviour
     [SerializeField, Min(0.01f)] private float lowAmmoPulseSpeed = 5f;
     [SerializeField] private Color lowAmmoPulseColor = Color.red;
     private Color magazineDisplayColor = Color.white;
+    private Color chamberBoxColor = Color.white;
     private RawImage reloadBarBackground;
     private RawImage reloadBarFill;
     private RawImage chamberBarFill;
+    private RawImage chamberBoxImage;
+    private Transform chamberBox;
+    private Transform chamberBar;
 
     private void OnEnable()
     {
@@ -57,13 +61,14 @@ public sealed class AmmoWidget : MonoBehaviour
 
             string loadedSlots = new string('|', loadedAmmo);
             string emptySlots = $"<color=#000000>{new string('|', emptyAmmo)}</color>";
-            magazineDisplayText.text = $"{loadedSlots}{emptySlots}|+{Mathf.Max(0, chamberAmmo)}";
+            string magazineSection = $"{loadedSlots}{emptySlots}";
+            magazineDisplayText.text = $"{magazineSection} >";
             magazineDisplayText.color = magazineDisplayColor;
             magazineDisplayText.gameObject.SetActive(true);
             lowAmmoPulseActive = magazineAmmo < lowAmmoThreshold;
         }
 
-        SetProgressBars(reloadProgress, chamberProgress);
+        SetProgressBars(reloadProgress, chamberProgress, chamberAmmo > 0);
     }
 
     private bool lowAmmoPulseActive;
@@ -76,14 +81,14 @@ public sealed class AmmoWidget : MonoBehaviour
         RectTransform barRect = barObject.GetComponent<RectTransform>();
         barRect.anchorMin = new Vector2(0f, 0.5f);
         barRect.anchorMax = new Vector2(1f, 0.5f);
-        barRect.offsetMin = new Vector2(0f, -2f);
-        barRect.offsetMax = new Vector2(0f, 2f);
+        barRect.offsetMin = new Vector2(0f, -4f);
+        barRect.offsetMax = new Vector2(0f, 4f);
 
         reloadBarBackground = CreateBarImage(barObject.transform, "Background", new Color(0f, 0f, 0f, 0.7f));
-        reloadBarFill = CreateBarImage(barObject.transform, "Fill", new Color(0.95f, 0.72f, 0.12f, 1f));
         chamberBarFill = CreateBarImage(barObject.transform, "ChamberFill", new Color(0.25f, 0.8f, 1f, 1f));
+        reloadBarFill = CreateBarImage(barObject.transform, "Fill", new Color(0.95f, 0.72f, 0.12f, 1f));
         barObject.transform.SetAsFirstSibling();
-        SetProgressBars(0f, 0f);
+        SetProgressBars(0f, 0f, false);
     }
 
     private void EnsureReloadBar()
@@ -93,13 +98,28 @@ public sealed class AmmoWidget : MonoBehaviour
             return;
         }
 
-        Transform existingBar = magazineDisplayText.transform.Find("ReloadBar");
+        Transform ammoGroup = magazineDisplayText.transform.parent;
+        Transform existingBar = FindNamedChild(ammoGroup, "ReloadBar");
+        chamberBox = FindNamedChild(ammoGroup, "ChamberBox");
+        chamberBar = FindNamedChild(ammoGroup, "ChamberBar");
+        if (chamberBox != null)
+        {
+            chamberBoxImage = chamberBox.GetComponent<RawImage>();
+            if (chamberBoxImage != null)
+            {
+                chamberBoxColor = chamberBoxImage.color;
+            }
+        }
+
         if (existingBar != null)
         {
-            reloadBarBackground = existingBar.Find("Background")?.GetComponent<RawImage>();
-            reloadBarFill = existingBar.Find("Fill")?.GetComponent<RawImage>();
-            chamberBarFill = existingBar.Find("ChamberFill")?.GetComponent<RawImage>();
-            if (chamberBarFill == null)
+            reloadBarBackground = FindNamedImage(existingBar, "Background");
+            reloadBarFill = FindNamedImage(existingBar, "ReloadFill");
+            reloadBarFill = reloadBarFill != null ? reloadBarFill : FindNamedImage(existingBar, "Fill");
+            chamberBarFill = FindNamedImage(chamberBar, "Fill");
+            chamberBarFill = chamberBarFill != null ? chamberBarFill : FindNamedImage(chamberBar, "ChamberFill");
+            chamberBarFill = chamberBarFill != null ? chamberBarFill : FindNamedImage(existingBar, "ChamberFill");
+            if (chamberBarFill == null && chamberBar == null && chamberBox == null)
             {
                 chamberBarFill = CreateBarImage(existingBar, "ChamberFill", new Color(0.25f, 0.8f, 1f, 1f));
             }
@@ -107,6 +127,35 @@ public sealed class AmmoWidget : MonoBehaviour
         }
 
         CreateReloadBar();
+    }
+
+    private static Transform FindNamedChild(Transform root, string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        Transform directChild = root.Find(objectName);
+        if (directChild != null)
+        {
+            return directChild;
+        }
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name == objectName)
+            {
+                return child;
+            }
+        }
+
+        return null;
+    }
+
+    private static RawImage FindNamedImage(Transform root, string objectName)
+    {
+        return FindNamedChild(root, objectName)?.GetComponent<RawImage>();
     }
 
     private static RawImage CreateBarImage(Transform parent, string objectName, Color color)
@@ -125,22 +174,32 @@ public sealed class AmmoWidget : MonoBehaviour
         return image;
     }
 
-    private void SetProgressBars(float reloadProgress, float chamberProgress)
+    private void SetProgressBars(float reloadProgress, float chamberProgress, bool chambered)
     {
-        if (reloadBarBackground == null || reloadBarFill == null || chamberBarFill == null)
+        if (reloadBarBackground == null || reloadBarFill == null)
         {
             return;
         }
 
         bool reloadVisible = !Application.isPlaying || (reloadProgress > 0f && reloadProgress < 1f);
         bool chamberVisible = Application.isPlaying && chamberProgress > 0f && chamberProgress < 1f;
-        reloadBarBackground.gameObject.SetActive(!Application.isPlaying || reloadVisible || chamberVisible);
+        reloadBarBackground.gameObject.SetActive(!Application.isPlaying || reloadVisible);
         reloadBarFill.gameObject.SetActive(reloadVisible);
-        chamberBarFill.gameObject.SetActive(chamberVisible);
         reloadBarFill.rectTransform.anchorMin = Vector2.zero;
         reloadBarFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(reloadProgress), 1f);
-        chamberBarFill.rectTransform.anchorMin = new Vector2(1f - Mathf.Clamp01(chamberProgress), 0f);
-        chamberBarFill.rectTransform.anchorMax = Vector2.one;
+
+        if (chamberBoxImage != null)
+        {
+            chamberBoxImage.gameObject.SetActive(!Application.isPlaying || chambered);
+        }
+
+        if (chamberBarFill != null)
+        {
+            chamberBarFill.gameObject.SetActive(chamberVisible);
+            float chamberFill = Mathf.Clamp01(chamberProgress);
+            chamberBarFill.rectTransform.anchorMin = new Vector2(1f - chamberFill, 0f);
+            chamberBarFill.rectTransform.anchorMax = Vector2.one;
+        }
     }
 
     private void Update()
@@ -153,10 +212,20 @@ public sealed class AmmoWidget : MonoBehaviour
         if (!lowAmmoPulseActive)
         {
             magazineDisplayText.color = magazineDisplayColor;
+            if (chamberBoxImage != null)
+            {
+                chamberBoxImage.color = chamberBoxColor;
+            }
+
             return;
         }
 
         float pulse = (Mathf.Sin(Time.unscaledTime * lowAmmoPulseSpeed) + 1f) * 0.5f;
-        magazineDisplayText.color = Color.Lerp(magazineDisplayColor, lowAmmoPulseColor, pulse);
+        Color pulseColor = Color.Lerp(magazineDisplayColor, lowAmmoPulseColor, pulse);
+        magazineDisplayText.color = pulseColor;
+        if (chamberBoxImage != null)
+        {
+            chamberBoxImage.color = Color.Lerp(chamberBoxColor, lowAmmoPulseColor, pulse);
+        }
     }
 }

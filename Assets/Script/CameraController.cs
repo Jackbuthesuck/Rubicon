@@ -7,10 +7,16 @@ public sealed class CameraController : MonoBehaviour
     [Header("Target")]
     [SerializeField] private Transform target;
     [SerializeField] private Vector3 targetOffset = new Vector3(0f, 1.45f, 0f);
-    [SerializeField] private Vector3 cameraOffset = new Vector3(0.65f, 0.35f, -3.8f);
-    [SerializeField] private Vector3 aimTargetOffset = new Vector3(0f, 1.5f, 0f);
-    [SerializeField] private Vector3 aimCameraOffset = new Vector3(0.55f, 0.25f, -2.2f);
+    [SerializeField] private Vector3 cameraOffset = new Vector3(0.65f, 1.6f, -4.2f);
+    [SerializeField] private Vector3 aimTargetOffset = new Vector3(0f, 2f, 0f);
+    [SerializeField] private Vector3 aimCameraOffset = new Vector3(1.05f, 0.5f, -1.8f);
+    [SerializeField] private Vector3 leftAimCameraOffset = new Vector3(-1.05f, 0.5f, -1.8f);
+    [SerializeField] private Vector3 frontAimCameraOffset = new Vector3(0f, 0.5f, -1.8f);
+    [SerializeField, Min(0f)] private float aimLookAhead = 1.6f;
     [SerializeField, Min(0.01f)] private float aimTransitionSpeed = 8f;
+    [SerializeField, Range(0f, 1f)] private float aimOrbitPointBlend = 0.35f;
+    [SerializeField] private float aimOrbitForwardOffset = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float aimOrbitPitchScale = 0.45f;
 
     [Header("Look")]
     [SerializeField] private InputActionAsset inputActions;
@@ -34,10 +40,36 @@ public sealed class CameraController : MonoBehaviour
     private InputAction lookAction;
     private InputAction primaryWheelAction;
     private InputAction secondaryWheelAction;
-    private Vector3 currentVelocity;
     private float yaw;
     private float pitch;
     private float aimBlend;
+    private bool cameraParented;
+    private AimCameraPosition aimCameraPosition = AimCameraPosition.RightShoulder;
+
+    public Vector3 MovementForward
+    {
+        get
+        {
+            Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+            return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
+        }
+    }
+
+    public Vector3 MovementRight
+    {
+        get
+        {
+            Vector3 right = Vector3.ProjectOnPlane(transform.right, Vector3.up);
+            return right.sqrMagnitude > 0.001f ? right.normalized : Vector3.right;
+        }
+    }
+
+    private enum AimCameraPosition
+    {
+        RightShoulder,
+        LeftShoulder,
+        Front
+    }
 
     private void Awake()
     {
@@ -46,7 +78,7 @@ public sealed class CameraController : MonoBehaviour
 
         if (target == null)
         {
-            PlayerController player = FindFirstObjectByType<PlayerController>();
+            PlayerController player = FindAnyObjectByType<PlayerController>();
             if (player != null)
             {
                 target = player.transform;
@@ -61,6 +93,8 @@ public sealed class CameraController : MonoBehaviour
         if (target != null)
         {
             yaw = target.eulerAngles.y;
+            transform.SetParent(null, true);
+            cameraParented = false;
         }
         else
         {
@@ -102,27 +136,27 @@ public sealed class CameraController : MonoBehaviour
             return;
         }
 
-        UpdateOrbit();
-
         bool isAiming = player != null && player.IsAiming;
+        UpdateOrbit();
+        if (isAiming)
+        {
+            SetTargetYaw();
+        }
+
+        UpdateAimCameraPosition(isAiming);
+        UpdateCameraParenting(isAiming);
         aimBlend = Mathf.MoveTowards(aimBlend, isAiming ? 1f : 0f, aimTransitionSpeed * Time.deltaTime);
 
         Vector3 currentTargetOffset = Vector3.Lerp(targetOffset, aimTargetOffset, aimBlend);
-        Vector3 currentCameraOffset = Vector3.Lerp(cameraOffset, aimCameraOffset, aimBlend);
-        Vector3 pivot = target.position + currentTargetOffset;
-        Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 desiredPosition = pivot + orbitRotation * currentCameraOffset;
-        desiredPosition = ResolveCollision(pivot, desiredPosition);
-
-        float positionBlend = 1f - Mathf.Exp(-positionSharpness * Time.deltaTime);
-        transform.position = Vector3.Lerp(transform.position, desiredPosition, positionBlend);
-
-        Vector3 lookDirection = pivot - transform.position;
-        if (lookDirection.sqrMagnitude > 0.001f)
+        Vector3 selectedAimCameraOffset = GetAimCameraOffset();
+        Vector3 currentCameraOffset = Vector3.Lerp(cameraOffset, selectedAimCameraOffset, aimBlend);
+        if (cameraParented)
         {
-            Quaternion desiredRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
-            float rotationBlend = 1f - Mathf.Exp(-rotationSharpness * Time.deltaTime);
-            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, rotationBlend);
+            UpdateParentedCamera(currentTargetOffset, currentCameraOffset);
+        }
+        else
+        {
+            UpdateOrbitCamera(currentTargetOffset, currentCameraOffset);
         }
 
         if (cameraComponent != null)
@@ -138,19 +172,84 @@ public sealed class CameraController : MonoBehaviour
             return;
         }
 
-        Vector3 pivot = target.position + targetOffset;
+        Vector3 pivot = target.TransformPoint(targetOffset);
         Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
-        Vector3 desiredPosition = ResolveCollision(pivot, pivot + orbitRotation * cameraOffset);
+        Vector3 desiredPosition = pivot + orbitRotation * (cameraOffset - targetOffset);
+        desiredPosition = ResolveCollision(pivot, desiredPosition);
         transform.SetPositionAndRotation(desiredPosition, Quaternion.LookRotation(pivot - desiredPosition, Vector3.up));
+        cameraParented = false;
         Debug.Log($"{nameof(CameraController)} following {target.name} at {target.position}.", this);
     }
 
-    private void UpdateOrbit()
+    private void UpdateCameraParenting(bool shouldParent)
+    {
+        if (cameraParented == shouldParent)
+        {
+            return;
+        }
+
+        if (shouldParent)
+        {
+            transform.SetParent(target, true);
+        }
+        else
+        {
+            yaw = target.eulerAngles.y;
+            transform.SetParent(null, true);
+        }
+
+        cameraParented = shouldParent;
+    }
+
+    private void UpdateParentedCamera(Vector3 pivotOffset, Vector3 cameraOffset)
+    {
+        Vector3 orbitOffset = Vector3.Lerp(pivotOffset, cameraOffset, aimOrbitPointBlend);
+        orbitOffset += Vector3.forward * aimOrbitForwardOffset;
+        Quaternion orbitRotation = Quaternion.Euler(pitch * aimOrbitPitchScale, 0f, 0f);
+        Vector3 desiredLocalPosition = orbitOffset + orbitRotation * (cameraOffset - orbitOffset);
+        Vector3 pivot = target.TransformPoint(orbitOffset);
+        Vector3 desiredPosition = ResolveCollision(pivot, target.TransformPoint(desiredLocalPosition));
+        desiredLocalPosition = target.InverseTransformPoint(desiredPosition);
+
+        float positionBlend = 1f - Mathf.Exp(-positionSharpness * Time.deltaTime);
+        transform.localPosition = Vector3.Lerp(transform.localPosition, desiredLocalPosition, positionBlend);
+
+        Quaternion desiredLocalRotation = Quaternion.Euler(pitch, 0f, 0f);
+        float rotationBlend = 1f - Mathf.Exp(-rotationSharpness * Time.deltaTime);
+        transform.localRotation = Quaternion.Slerp(transform.localRotation, desiredLocalRotation, rotationBlend);
+    }
+
+    private void UpdateOrbitCamera(Vector3 pivotOffset, Vector3 cameraOffset)
+    {
+        Vector3 pivot = target.TransformPoint(pivotOffset);
+        Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 desiredPosition = pivot + orbitRotation * (cameraOffset - pivotOffset);
+        desiredPosition = ResolveCollision(pivot, desiredPosition);
+
+        float positionBlend = 1f - Mathf.Exp(-positionSharpness * Time.deltaTime);
+        transform.position = Vector3.Lerp(transform.position, desiredPosition, positionBlend);
+
+        Vector3 lookTarget = pivot + orbitRotation * (Vector3.forward * (aimLookAhead * aimBlend));
+        Vector3 lookDirection = lookTarget - transform.position;
+        if (lookDirection.sqrMagnitude > 0.001f)
+        {
+            Quaternion desiredRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
+            float rotationBlend = 1f - Mathf.Exp(-rotationSharpness * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, rotationBlend);
+        }
+    }
+
+    private Vector3 GetOrbitCameraPosition(Vector3 pivotOffset, Vector3 cameraOffset)
+    {
+        return pivotOffset + Quaternion.Euler(pitch, 0f, 0f) * (cameraOffset - pivotOffset);
+    }
+
+    private bool UpdateOrbit()
     {
         if ((primaryWheelAction != null && primaryWheelAction.IsPressed())
             || (secondaryWheelAction != null && secondaryWheelAction.IsPressed()))
         {
-            return;
+            return false;
         }
 
         Vector2 lookInput = lookAction?.ReadValue<Vector2>() ?? Vector2.zero;
@@ -159,6 +258,52 @@ public sealed class CameraController : MonoBehaviour
 
         yaw += lookInput.x * multiplier;
         pitch = Mathf.Clamp(pitch - lookInput.y * multiplier, minimumPitch, maximumPitch);
+        return lookInput.sqrMagnitude > 0.0001f;
+    }
+
+    private void SetTargetYaw()
+    {
+        target.rotation = Quaternion.Euler(0f, yaw, 0f);
+    }
+
+    private void UpdateAimCameraPosition(bool isAiming)
+    {
+        if (!isAiming)
+        {
+            return;
+        }
+
+        Gamepad gamepad = Gamepad.current;
+        if (gamepad == null)
+        {
+            return;
+        }
+
+        if (gamepad.dpad.right.wasPressedThisFrame)
+        {
+            aimCameraPosition = AimCameraPosition.RightShoulder;
+        }
+        else if (gamepad.dpad.left.wasPressedThisFrame)
+        {
+            aimCameraPosition = AimCameraPosition.LeftShoulder;
+        }
+        else if (gamepad.dpad.up.wasPressedThisFrame)
+        {
+            aimCameraPosition = AimCameraPosition.Front;
+        }
+    }
+
+    private Vector3 GetAimCameraOffset()
+    {
+        switch (aimCameraPosition)
+        {
+            case AimCameraPosition.LeftShoulder:
+                return leftAimCameraOffset;
+            case AimCameraPosition.Front:
+                return frontAimCameraOffset;
+            default:
+                return aimCameraOffset;
+        }
     }
 
     private Vector3 ResolveCollision(Vector3 pivot, Vector3 desiredPosition)
@@ -172,11 +317,39 @@ public sealed class CameraController : MonoBehaviour
         }
 
         Vector3 direction = toCamera / distance;
-        if (Physics.SphereCast(pivot, collisionRadius, direction, out RaycastHit hit, distance, collisionMask, QueryTriggerInteraction.Ignore))
+        RaycastHit[] hits = Physics.SphereCastAll(pivot, collisionRadius, direction, distance, collisionMask, QueryTriggerInteraction.Ignore);
+        float nearestDistance = distance;
+        bool hasCollision = false;
+        for (int hitIndex = 0; hitIndex < hits.Length; hitIndex++)
         {
-            return pivot + direction * Mathf.Max(0f, hit.distance - collisionPadding);
+            Collider hitCollider = hits[hitIndex].collider;
+            if (hitCollider == null || IsPlayerCollider(hitCollider))
+            {
+                continue;
+            }
+
+            if (hits[hitIndex].distance < nearestDistance)
+            {
+                nearestDistance = hits[hitIndex].distance;
+                hasCollision = true;
+            }
+        }
+
+        if (hasCollision)
+        {
+            return pivot + direction * Mathf.Max(0f, nearestDistance - collisionPadding);
         }
 
         return desiredPosition;
+    }
+
+    private bool IsPlayerCollider(Collider hitCollider)
+    {
+        if (hitCollider.transform == target || (target != null && hitCollider.transform.IsChildOf(target)))
+        {
+            return true;
+        }
+
+        return player != null && hitCollider.GetComponentInParent<PlayerController>() == player;
     }
 }

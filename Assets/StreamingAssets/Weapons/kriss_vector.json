@@ -8,6 +8,7 @@
   "startingReserveAmmo": 180,
   "roundsPerMinute": 1200,
   "reloadDuration": 1.5,
+  "chamberDuration": 0.25,
   "automatic": true,
   "isTopLoad": false,
   "category": "SMG"

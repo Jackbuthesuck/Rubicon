@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 [System.Serializable]
@@ -18,13 +19,16 @@ public sealed class CrosshairDefinition
     public CrosshairPieceDefinition[] layoutPieces = new CrosshairPieceDefinition[0];
     public CrosshairPieceMode[] pieceModes = new CrosshairPieceMode[0];
     public bool[] runningVisible = new bool[0];
+    public bool[] fadeWhenMoving = new bool[0];
+    public bool[] fadeWhenFiring = new bool[0];
     [Min(0f)] public float minimumGap = 18f;
     [Min(0f)] public float maximumGap = 44f;
     [Min(0f)] public float pieceLength = 16f;
     [Min(0f)] public float pieceThickness = 4f;
     public bool overridePieceSize = true;
-    public Color idleColor = Color.white;
-    public Color aimingColor = new Color(1f, 0.8f, 0.2f, 1f);
+    [FormerlySerializedAs("idleColor")] public Color defaultColor = Color.white;
+    [FormerlySerializedAs("aimingColor")] public Color aimAssistColor = new Color(1f, 0.8f, 0.2f, 1f);
+    public Color unavailableColor = new Color(0.55f, 0.55f, 0.55f, 1f);
 }
 
 public enum CrosshairPieceMode
@@ -38,8 +42,11 @@ public enum CrosshairPieceMode
 public sealed class CrosshairWidget : MonoBehaviour
 {
     [SerializeField] private Image[] pieces;
-    [SerializeField] private Color idleColor = Color.white;
-    [SerializeField] private Color aimingColor = new Color(1f, 0.8f, 0.2f, 1f);
+    [FormerlySerializedAs("idleColor")]
+    [SerializeField] private Color defaultColor = Color.white;
+    [FormerlySerializedAs("aimingColor")]
+    [SerializeField] private Color aimAssistColor = new Color(1f, 0.8f, 0.2f, 1f);
+    [SerializeField] private Color unavailableColor = new Color(0.55f, 0.55f, 0.55f, 1f);
     [SerializeField, Min(0f)] private float minimumGap = 18f;
     [SerializeField, Min(0f)] private float maximumGap = 44f;
     [SerializeField, Min(0f)] private float fadeStartSpeed = 2.2f;
@@ -47,6 +54,15 @@ public sealed class CrosshairWidget : MonoBehaviour
     [SerializeField] private float movementRotation = 7f;
     [SerializeField, Min(0f)] private float recoilRecoverySpeed = 80f;
     [SerializeField, Min(0f)] private float recoilMultiplier = 2.5f;
+    [SerializeField, Min(0f)] private float firingFadePerShot = 0.35f;
+    [SerializeField, Min(0f)] private float firingFadeRecoverySpeed = 3.5f;
+    [SerializeField, Min(0f)] private float chamberExpansionMultiplier = 2.5f;
+    [SerializeField, Range(0f, 1f)] private float chamberFadeStrength = 0.95f;
+    [SerializeField] private WeaponCategory editorPreviewCategory = WeaponCategory.HG;
+    [SerializeField] private bool showBasePiecesInEditor = true;
+    [SerializeField, Range(0f, 80f)] private float editorPreviewRecoilGap;
+    [SerializeField, Range(0f, 10f)] private float editorPreviewRunningSpeed;
+    [SerializeField, Min(0.01f)] private float editorPreviewMaximumSpeed = 5f;
     [SerializeField] private CrosshairDefinition[] crosshairs = new CrosshairDefinition[0];
 
     private RectTransform[] pieceRects;
@@ -57,6 +73,7 @@ public sealed class CrosshairWidget : MonoBehaviour
     private float baseGap;
     private float currentRotation;
     private float recoilGap;
+    private float firingFade;
 
     private void OnEnable()
     {
@@ -67,7 +84,22 @@ public sealed class CrosshairWidget : MonoBehaviour
 
         defaultPieces = FindFallbackPieces();
         EnsureGeneratedDefinitions();
-        HideFallbackPiecesInEditor();
+        UpdateEditorPreview();
+        ApplyEditorPreview();
+        MarkSceneDirty();
+    }
+
+    private void OnValidate()
+    {
+        if (Application.isPlaying)
+        {
+            return;
+        }
+
+        defaultPieces = FindFallbackPieces();
+        EnsureGeneratedDefinitions();
+        UpdateEditorPreview();
+        ApplyEditorPreview();
         MarkSceneDirty();
     }
 
@@ -99,9 +131,10 @@ public sealed class CrosshairWidget : MonoBehaviour
     public void AddRecoil(float recoil)
     {
         recoilGap = Mathf.Clamp(recoilGap + Mathf.Max(0f, recoil) * recoilMultiplier, 0f, 80f);
+        firingFade = Mathf.Clamp01(firingFade + Mathf.Max(0.01f, firingFadePerShot));
     }
 
-    public void SetAimState(bool isAiming, Vector3 localVelocity, float maximumSpeed, WeaponCategory category = WeaponCategory.HG)
+    public void SetAimState(bool isAiming, Vector3 localVelocity, float maximumSpeed, WeaponCategory category = WeaponCategory.HG, bool isUnavailable = false, bool isAimAssistActive = false, float chamberPressure = 0f)
     {
         CrosshairDefinition definition = GetDefinition(category);
         Image[] selectedPieces = definition != null && definition.pieces != null && definition.pieces.Length > 0
@@ -118,17 +151,23 @@ public sealed class CrosshairWidget : MonoBehaviour
             return;
         }
 
-        Color color = isAiming
-            ? definition != null ? definition.aimingColor : aimingColor
-            : definition != null ? definition.idleColor : idleColor;
+        Color color = isUnavailable
+            ? definition != null ? definition.unavailableColor : unavailableColor
+            : isAimAssistActive
+            ? definition != null ? definition.aimAssistColor : aimAssistColor
+            : definition != null ? definition.defaultColor : defaultColor;
         float minimum = definition != null ? definition.minimumGap : minimumGap;
         float maximum = definition != null ? definition.maximumGap : maximumGap;
         float speed = new Vector2(localVelocity.x, localVelocity.z).magnitude;
         float movementAmount = Mathf.InverseLerp(0f, Mathf.Max(0.01f, maximumSpeed), speed);
+        chamberPressure = Mathf.Clamp01(chamberPressure);
         recoilGap = Mathf.MoveTowards(recoilGap, 0f, recoilRecoverySpeed * Time.deltaTime);
-        float gap = Mathf.Lerp(minimum, maximum, movementAmount) + recoilGap;
+        firingFade = Mathf.MoveTowards(firingFade, 0f, firingFadeRecoverySpeed * Time.deltaTime);
+        float chamberGap = maximum * chamberPressure * chamberExpansionMultiplier;
+        float gap = Mathf.Lerp(minimum, maximum, movementAmount) + recoilGap + chamberGap;
         float expandScale = gap / Mathf.Max(0.01f, baseGap);
         float fade = 1f - Mathf.InverseLerp(fadeStartSpeed, Mathf.Max(fadeStartSpeed + 0.01f, fadeEndSpeed), speed);
+        float chamberFade = 1f - chamberPressure * chamberFadeStrength;
         float targetRotation = Mathf.Clamp(-localVelocity.x * movementRotation, -35f, 35f);
         currentRotation = Mathf.LerpAngle(currentRotation, targetRotation, 1f - Mathf.Exp(-12f * Time.deltaTime));
 
@@ -145,9 +184,12 @@ public sealed class CrosshairWidget : MonoBehaviour
                 continue;
             }
 
-            bool visibleWhileRunning = IsRunningPieceVisible(definition, pieceIndex);
+            bool fadeMovement = ShouldFadeWhenMoving(definition, pieceIndex);
+            bool fadeFiring = ShouldFadeWhenFiring(definition, pieceIndex);
             Color pieceColor = color;
-            pieceColor.a *= isAiming && !visibleWhileRunning ? fade : 1f;
+            float movementFade = fadeMovement ? fade : 1f;
+            float firingAlpha = fadeFiring ? 1f - firingFade : 1f;
+            pieceColor.a *= isAiming ? movementFade * firingAlpha * chamberFade : 1f;
             piece.color = pieceColor;
 
             if (pieceIndex >= pieceRects.Length || pieceRects[pieceIndex] == null)
@@ -210,7 +252,7 @@ public sealed class CrosshairWidget : MonoBehaviour
 
     private void EnsureGeneratedDefinitions()
     {
-        if (crosshairs == null || crosshairs.Length == 0 || !UsesSharedFallbackPieces())
+        if (crosshairs == null || crosshairs.Length == 0)
         {
             return;
         }
@@ -283,22 +325,77 @@ public sealed class CrosshairWidget : MonoBehaviour
         return fallback;
     }
 
-    private void HideFallbackPiecesInEditor()
+    private void UpdateEditorPreview()
     {
-        if (defaultPieces == null)
+        if (defaultPieces != null)
+        {
+            for (int pieceIndex = 0; pieceIndex < defaultPieces.Length; pieceIndex++)
+            {
+                SetPieceAlpha(defaultPieces[pieceIndex], showBasePiecesInEditor ? 1f : 0f);
+            }
+        }
+
+        if (crosshairs == null)
         {
             return;
         }
 
-        for (int pieceIndex = 0; pieceIndex < defaultPieces.Length; pieceIndex++)
+        CrosshairDefinition previewDefinition = GetDefinition(editorPreviewCategory);
+        for (int definitionIndex = 0; definitionIndex < crosshairs.Length; definitionIndex++)
         {
-            if (defaultPieces[pieceIndex] != null)
+            Image[] generatedPieces = crosshairs[definitionIndex]?.pieces;
+            if (generatedPieces == null)
             {
-                Color color = defaultPieces[pieceIndex].color;
-                color.a = 0f;
-                defaultPieces[pieceIndex].color = color;
+                continue;
+            }
+
+            for (int pieceIndex = 0; pieceIndex < generatedPieces.Length; pieceIndex++)
+            {
+                SetPieceAlpha(generatedPieces[pieceIndex], crosshairs[definitionIndex] == previewDefinition ? 1f : 0f);
             }
         }
+    }
+
+    private void ApplyEditorPreview()
+    {
+        CrosshairDefinition definition = GetDefinition(editorPreviewCategory);
+        Image[] previewPieces = definition != null ? definition.pieces : defaultPieces;
+        if (previewPieces == null || previewPieces.Length == 0)
+        {
+            return;
+        }
+
+        if (pieces != previewPieces || pieceRects == null || pieceRects.Length != previewPieces.Length)
+        {
+            pieces = previewPieces;
+            CachePieceGeometry();
+        }
+
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        recoilGap = editorPreviewRecoilGap;
+        firingFade = Mathf.Clamp01(editorPreviewRecoilGap / 80f);
+        SetAimState(
+            true,
+            new Vector3(0f, 0f, editorPreviewRunningSpeed),
+            editorPreviewMaximumSpeed,
+            editorPreviewCategory);
+    }
+
+    private static void SetPieceAlpha(Image piece, float alpha)
+    {
+        if (piece == null)
+        {
+            return;
+        }
+
+        Color color = piece.color;
+        color.a = alpha;
+        piece.color = color;
     }
 
     private void MarkSceneDirty()
@@ -356,19 +453,53 @@ public sealed class CrosshairWidget : MonoBehaviour
             return;
         }
 
+        bool hasLayout = definition.layoutPieces != null && definition.layoutPieces.Length > 0;
         if (definition.layoutPieces == null || definition.layoutPieces.Length == 0)
         {
             definition.layoutPieces = ConvertLayout(defaultLayout);
         }
 
-        definition.pieces = CreatePieces(category.ToString(), definition.layoutPieces);
-        definition.pieceModes = modes;
-        definition.runningVisible = runningVisible;
-        definition.minimumGap = minimum;
-        definition.maximumGap = maximum;
-        definition.pieceLength = 8f;
-        definition.pieceThickness = 8f;
-        definition.overridePieceSize = false;
+        if (definition.pieces == null || definition.pieces.Length == 0)
+        {
+            definition.pieces = CreatePieces(category.ToString(), definition.layoutPieces);
+        }
+
+        if (!hasLayout || definition.pieceModes == null || definition.pieceModes.Length != modes.Length)
+        {
+            definition.pieceModes = modes;
+        }
+
+        if (!hasLayout || definition.runningVisible == null || definition.runningVisible.Length != runningVisible.Length)
+        {
+            definition.runningVisible = runningVisible;
+        }
+
+        if (definition.fadeWhenMoving == null || definition.fadeWhenMoving.Length != runningVisible.Length)
+        {
+            definition.fadeWhenMoving = new bool[runningVisible.Length];
+            for (int index = 0; index < runningVisible.Length; index++)
+            {
+                definition.fadeWhenMoving[index] = !runningVisible[index];
+            }
+        }
+
+        if (definition.fadeWhenFiring == null || definition.fadeWhenFiring.Length != runningVisible.Length)
+        {
+            definition.fadeWhenFiring = new bool[runningVisible.Length];
+            for (int index = 0; index < definition.fadeWhenFiring.Length; index++)
+            {
+                definition.fadeWhenFiring[index] = true;
+            }
+        }
+
+        if (!hasLayout)
+        {
+            definition.minimumGap = minimum;
+            definition.maximumGap = maximum;
+            definition.pieceLength = 8f;
+            definition.pieceThickness = 8f;
+            definition.overridePieceSize = false;
+        }
     }
 
     private static CrosshairPieceDefinition[] ConvertLayout(PieceSpec[] specs)
@@ -494,12 +625,25 @@ public sealed class CrosshairWidget : MonoBehaviour
         return definition != null ? definition.pieces : null;
     }
 
-    private static bool IsRunningPieceVisible(CrosshairDefinition definition, int pieceIndex)
+    private static bool ShouldFadeWhenMoving(CrosshairDefinition definition, int pieceIndex)
     {
-        return definition == null
-            || definition.runningVisible == null
-            || pieceIndex >= definition.runningVisible.Length
-            || definition.runningVisible[pieceIndex];
+        if (definition != null && definition.fadeWhenMoving != null && pieceIndex < definition.fadeWhenMoving.Length)
+        {
+            return definition.fadeWhenMoving[pieceIndex];
+        }
+
+        return definition != null
+            && definition.runningVisible != null
+            && pieceIndex < definition.runningVisible.Length
+            && !definition.runningVisible[pieceIndex];
+    }
+
+    private static bool ShouldFadeWhenFiring(CrosshairDefinition definition, int pieceIndex)
+    {
+        return definition != null
+            && definition.fadeWhenFiring != null
+            && pieceIndex < definition.fadeWhenFiring.Length
+            && definition.fadeWhenFiring[pieceIndex];
     }
 
     private static float GetPieceScale(CrosshairDefinition definition, int pieceIndex, float movementAmount, float expandScale)

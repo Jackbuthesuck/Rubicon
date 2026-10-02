@@ -39,7 +39,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
     {
         if (loadout == null)
         {
-            PlayerController player = FindFirstObjectByType<PlayerController>();
+            PlayerController player = FindAnyObjectByType<PlayerController>();
             if (player != null)
             {
                 loadout = player.GetComponent<WeaponLoadout>();
@@ -182,7 +182,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
 
         if (loadout == null)
         {
-            PlayerController player = FindFirstObjectByType<PlayerController>();
+            PlayerController player = FindAnyObjectByType<PlayerController>();
             if (player != null)
             {
                 loadout = player.GetComponent<WeaponLoadout>();

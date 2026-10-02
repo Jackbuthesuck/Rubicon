@@ -8,6 +8,7 @@
   "startingReserveAmmo": 400,
   "roundsPerMinute": 850,
   "reloadDuration": 3.2,
+  "chamberDuration": 0.45,
   "automatic": true,
   "isTopLoad": false,
   "category": "LMG"

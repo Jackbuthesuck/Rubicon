@@ -25,6 +25,7 @@ public sealed class WeaponDefinition
     public int startingReserveAmmo = 120;
     public float roundsPerMinute = 600f;
     public float reloadDuration = 1.2f;
+    public float chamberDuration = 0.25f;
     public bool automatic;
     public bool isTopLoad;
     public string category = "HG";
@@ -71,6 +72,8 @@ public sealed class WeaponController : MonoBehaviour
     private float chamberUntil;
     private float reloadUntil;
     private float reloadStartedAt;
+    private float reloadChamberUntil;
+    private float reloadChamberStartedAt;
     private bool equipped = true;
     private Transform visualModel;
 
@@ -96,6 +99,25 @@ public sealed class WeaponController : MonoBehaviour
     public string AmmoId => ammoDefinition != null ? ammoDefinition.id : string.Empty;
     public AmmoDefinition Ammo => ammoDefinition;
     public bool IsReloading => reloadUntil > Time.time;
+    public bool IsAimBlocked => IsReloading || reloadChamberUntil > Time.time;
+    public float CrosshairChamberPressure
+    {
+        get
+        {
+            if (definition == null || ChamberProgress <= 0f)
+            {
+                return 0f;
+            }
+
+            float slowFireFactor = Mathf.InverseLerp(240f, 60f, definition.roundsPerMinute);
+            if (definition.isTopLoad)
+            {
+                slowFireFactor = Mathf.Max(slowFireFactor, 0.75f);
+            }
+
+            return (1f - ChamberProgress) * slowFireFactor;
+        }
+    }
     public float ReloadProgress
     {
         get
@@ -113,13 +135,24 @@ public sealed class WeaponController : MonoBehaviour
     {
         get
         {
-            if (definition == null || definition.automatic || chamberUntil <= Time.time)
+            if (definition == null)
             {
                 return 0f;
             }
 
-            float duration = Mathf.Max(0.05f, chamberUntil - chamberStartedAt);
-            return Mathf.Clamp01((Time.time - chamberStartedAt) / duration);
+            if (reloadChamberUntil > Time.time)
+            {
+                float reloadChamberDuration = Mathf.Max(0.05f, reloadChamberUntil - reloadChamberStartedAt);
+                return Mathf.Clamp01((Time.time - reloadChamberStartedAt) / reloadChamberDuration);
+            }
+
+            if (definition.automatic || chamberUntil <= Time.time)
+            {
+                return 0f;
+            }
+
+            float shotChamberDuration = Mathf.Max(0.05f, chamberUntil - chamberStartedAt);
+            return Mathf.Clamp01((Time.time - chamberStartedAt) / shotChamberDuration);
         }
     }
 
@@ -174,7 +207,7 @@ public sealed class WeaponController : MonoBehaviour
             BeginReload();
         }
 
-        if (IsReloading)
+        if (reloadUntil > 0f)
         {
             if (Time.time >= reloadUntil)
             {
@@ -185,9 +218,26 @@ public sealed class WeaponController : MonoBehaviour
                 }
                 else
                 {
+                    bool needsChamber = loaded && !magazine.Chambered;
                     reloadUntil = 0f;
                     reloadStartedAt = 0f;
+                    if (needsChamber)
+                    {
+                        StartChambering();
+                    }
                 }
+            }
+
+            return;
+        }
+
+        if (reloadChamberUntil > 0f)
+        {
+            if (Time.time >= reloadChamberUntil)
+            {
+                magazine.ChamberRound();
+                reloadChamberUntil = 0f;
+                reloadChamberStartedAt = 0f;
             }
 
             return;
@@ -305,7 +355,7 @@ public sealed class WeaponController : MonoBehaviour
             return new Ray(origin, Vector3.forward);
         }
 
-        return camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        return new Ray(origin, camera.transform.forward);
     }
 
     private static Transform FindVisualModel(Transform weaponRoot, PlayerController owner)
@@ -340,6 +390,12 @@ public sealed class WeaponController : MonoBehaviour
     {
         reloadStartedAt = Time.time;
         reloadUntil = Time.time + Mathf.Max(0.05f, definition.reloadDuration);
+    }
+
+    private void StartChambering()
+    {
+        reloadChamberStartedAt = Time.time;
+        reloadChamberUntil = Time.time + Mathf.Max(0.05f, definition.chamberDuration);
     }
 
     private bool ReloadPressedThisFrame()

@@ -475,7 +475,7 @@ public sealed class PauseMenu : MonoBehaviour
 
     private void EnsureEventSystem()
     {
-        EventSystem eventSystem = FindFirstObjectByType<EventSystem>();
+        EventSystem eventSystem = FindAnyObjectByType<EventSystem>();
         if (eventSystem == null)
         {
             GameObject eventSystemObject = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
@@ -914,7 +914,7 @@ public sealed class PauseMenu : MonoBehaviour
 
     private void CreateEventSystemIfNeeded()
     {
-        if (FindFirstObjectByType<EventSystem>() != null)
+        if (FindAnyObjectByType<EventSystem>() != null)
         {
             return;
         }

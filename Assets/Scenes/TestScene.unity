@@ -209,7 +209,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.113501, y: -0, z: -0, w: 0.9935379}
-  m_LocalPosition: {x: 0, y: 5.12, z: -10}
+  m_LocalPosition: {x: 0.65, y: 1.6, z: -4.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -274,10 +274,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   target: {fileID: 335371042}
   targetOffset: {x: 0, y: 1.45, z: 0}
-  cameraOffset: {x: 0.65, y: 0.35, z: -3.8}
-  aimTargetOffset: {x: 0, y: 1.5, z: 0}
-  aimCameraOffset: {x: 0.55, y: 0.25, z: -2.2}
+  cameraOffset: {x: 0.65, y: 1.6, z: -4.2}
+  aimTargetOffset: {x: 0, y: 2, z: 0}
+  aimCameraOffset: {x: 1.05, y: 0.5, z: -1.8}
+  leftAimCameraOffset: {x: -1.05, y: 0.5, z: -1.8}
+  frontAimCameraOffset: {x: 0, y: 0.5, z: -1.8}
+  aimLookAhead: 1.6
   aimTransitionSpeed: 8
+  aimOrbitPointBlend: 0.35
+  aimOrbitForwardOffset: 0.25
+  aimOrbitPitchScale: 0.45
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   startingPitch: 12
   minimumPitch: -25

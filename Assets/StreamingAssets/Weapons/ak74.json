@@ -8,6 +8,7 @@
   "startingReserveAmmo": 120,
   "roundsPerMinute": 650,
   "reloadDuration": 1.8,
+  "chamberDuration": 0.85,
   "automatic": true,
   "isTopLoad": false,
   "category": "AR"
