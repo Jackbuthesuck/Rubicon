@@ -18,6 +18,10 @@ public sealed class HUD : MonoBehaviour
 
     [Header("Canvas")]
     [SerializeField] private Canvas hudCanvas;
+    [SerializeField, Min(0f)] private float shoulderHudTransitionOffset = 80f;
+    [SerializeField, Min(0.01f)] private float hudTransitionSharpness = 12f;
+    [SerializeField, Range(0f, 10f)] private float hudRollFromCrosshair = 10f;
+    [SerializeField, Min(0.01f)] private float hudRollSharpness = 12f;
 
     [Header("Layout")]
     [SerializeField] private int sortingOrder = 100;
@@ -37,6 +41,13 @@ public sealed class HUD : MonoBehaviour
     private CrosshairWidget crosshair;
     private AmmoWidget ammoWidget;
     private WeaponController recoilWeapon;
+    private Transform hudContentTransform;
+    private Transform bottomHudTransform;
+    private Vector3 baseBottomHudPosition;
+    private float currentHudHorizontalOffset;
+    private int lastAimCameraTransitionVersion;
+    private Quaternion baseHudRotation = Quaternion.identity;
+    private float currentHudRoll;
 
     private void Awake()
     {
@@ -73,12 +84,35 @@ public sealed class HUD : MonoBehaviour
 
         BindRecoilWeapon(weaponController);
 
+        CameraController cameraController = Camera.main != null ? Camera.main.GetComponent<CameraController>() : null;
+        if (cameraController != null && cameraController.AimCameraTransitionVersion != lastAimCameraTransitionVersion)
+        {
+            currentHudHorizontalOffset = cameraController.AimCameraTransitionDirection * shoulderHudTransitionOffset;
+            lastAimCameraTransitionVersion = cameraController.AimCameraTransitionVersion;
+        }
+
+        currentHudHorizontalOffset = Mathf.Lerp(currentHudHorizontalOffset, 0f, 1f - Mathf.Exp(-hudTransitionSharpness * Time.deltaTime));
+        if (bottomHudTransform != null)
+        {
+            bottomHudTransform.localPosition = baseBottomHudPosition + Vector3.right * currentHudHorizontalOffset;
+        }
+
         if (player != null && crosshair != null)
         {
             WeaponCategory category = weaponController != null ? weaponController.Category : WeaponCategory.HG;
             bool aimBlocked = weaponController != null && weaponController.IsAimBlocked;
             float chamberPressure = weaponController != null ? weaponController.CrosshairChamberPressure : 0f;
-            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed, category, aimBlocked, false, chamberPressure);
+            float lookHorizontal = cameraController != null ? cameraController.LookHorizontalForCrosshair : 0f;
+            crosshair.SetAimState(player.IsAiming, player.LocalPlanarVelocity, player.MovementSpeed, category, aimBlocked, false, chamberPressure, lookHorizontal, player.MoveInputHorizontal);
+        }
+
+        float targetHudRoll = player != null && player.IsAiming && crosshair != null
+            ? Mathf.Clamp(crosshair.CurrentRotation / 90f, -1f, 1f) * hudRollFromCrosshair
+            : 0f;
+        currentHudRoll = Mathf.Lerp(currentHudRoll, targetHudRoll, 1f - Mathf.Exp(-hudRollSharpness * Time.deltaTime));
+        if (hudContentTransform != null)
+        {
+            hudContentTransform.localRotation = baseHudRotation * Quaternion.Euler(0f, 0f, currentHudRoll);
         }
 
         if (weaponController != null && ammoWidget != null)
@@ -165,6 +199,14 @@ public sealed class HUD : MonoBehaviour
         {
             Debug.LogWarning($"{nameof(HUD)} expects HUDContent to exist under the Canvas.", this);
             return;
+        }
+
+        hudContentTransform = content;
+        baseHudRotation = hudContentTransform.localRotation;
+        bottomHudTransform = content.Find("BottomHud");
+        if (bottomHudTransform != null)
+        {
+            baseBottomHudPosition = bottomHudTransform.localPosition;
         }
 
         Graphic[] graphics = content.GetComponentsInChildren<Graphic>(true);

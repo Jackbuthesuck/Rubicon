@@ -30,6 +30,7 @@ public sealed class PlayerController : MonoBehaviour
     public bool IsAiming { get; private set; }
     public Vector3 PlanarVelocity => planarVelocity;
     public Vector3 LocalPlanarVelocity => transform.InverseTransformDirection(planarVelocity);
+    public float MoveInputHorizontal { get; private set; }
     public float MovementSpeed => walkSpeed;
 
     private void Awake()
@@ -71,6 +72,7 @@ public sealed class PlayerController : MonoBehaviour
     private void Update()
     {
         Vector2 input = moveAction?.ReadValue<Vector2>() ?? Vector2.zero;
+        MoveInputHorizontal = input.x;
         bool isAiming = aimAction?.IsPressed() ?? false;
         IsAiming = isAiming;
 

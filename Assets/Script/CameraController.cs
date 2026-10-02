@@ -9,14 +9,16 @@ public sealed class CameraController : MonoBehaviour
     [SerializeField] private Vector3 targetOffset = new Vector3(0f, 1.45f, 0f);
     [SerializeField] private Vector3 cameraOffset = new Vector3(0.65f, 1.6f, -4.2f);
     [SerializeField] private Vector3 aimTargetOffset = new Vector3(0f, 2f, 0f);
-    [SerializeField] private Vector3 aimCameraOffset = new Vector3(1.05f, 0.5f, -1.8f);
-    [SerializeField] private Vector3 leftAimCameraOffset = new Vector3(-1.05f, 0.5f, -1.8f);
-    [SerializeField] private Vector3 frontAimCameraOffset = new Vector3(0f, 0.5f, -1.8f);
+    [SerializeField] private Vector3 aimCameraOffset = new Vector3(1.25f, 2.5f, -1.5f);
+    [SerializeField] private Vector3 leftAimCameraOffset = new Vector3(-1.25f, 2.5f, -1.5f);
+    [SerializeField] private Vector3 frontAimCameraOffset = new Vector3(0f, 2.5f, -1.5f);
     [SerializeField, Min(0f)] private float aimLookAhead = 1.6f;
     [SerializeField, Min(0.01f)] private float aimTransitionSpeed = 8f;
     [SerializeField, Range(0f, 1f)] private float aimOrbitPointBlend = 0.35f;
-    [SerializeField] private float aimOrbitForwardOffset = 0.25f;
-    [SerializeField, Range(0f, 1f)] private float aimOrbitPitchScale = 0.45f;
+    [SerializeField] private float aimOrbitForwardOffset = 0.5f;
+    [SerializeField] private float aimUpCameraHeight = 0.23f;
+    [SerializeField] private float aimDownCameraHeight = 2.5f;
+    [SerializeField, Min(0.01f)] private float aimCameraHeightBias = 2.5f;
 
     [Header("Look")]
     [SerializeField] private InputActionAsset inputActions;
@@ -45,6 +47,8 @@ public sealed class CameraController : MonoBehaviour
     private float aimBlend;
     private bool cameraParented;
     private AimCameraPosition aimCameraPosition = AimCameraPosition.RightShoulder;
+    private int aimCameraTransitionVersion;
+    private float aimCameraTransitionDirection;
 
     public Vector3 MovementForward
     {
@@ -62,6 +66,39 @@ public sealed class CameraController : MonoBehaviour
             Vector3 right = Vector3.ProjectOnPlane(transform.right, Vector3.up);
             return right.sqrMagnitude > 0.001f ? right.normalized : Vector3.right;
         }
+    }
+
+    public float LookHorizontalForCrosshair
+    {
+        get
+        {
+            if (lookAction == null)
+            {
+                return 0f;
+            }
+
+            Vector2 lookInput = lookAction.ReadValue<Vector2>();
+            if (lookAction.activeControl?.device is Gamepad)
+            {
+                return Mathf.Clamp(lookInput.x, -1f, 1f);
+            }
+
+            if (lookAction.activeControl?.device is Mouse)
+            {
+                return Mathf.Clamp(lookInput.x * mouseSensitivity / 4f, -1f, 1f);
+            }
+
+            return 0f;
+        }
+    }
+
+    public int AimCameraTransitionVersion => aimCameraTransitionVersion;
+    public float AimCameraTransitionDirection => aimCameraTransitionDirection;
+
+    private void MarkAimCameraTransition(float direction)
+    {
+        aimCameraTransitionDirection = direction;
+        aimCameraTransitionVersion++;
     }
 
     private enum AimCameraPosition
@@ -205,8 +242,10 @@ public sealed class CameraController : MonoBehaviour
     {
         Vector3 orbitOffset = Vector3.Lerp(pivotOffset, cameraOffset, aimOrbitPointBlend);
         orbitOffset += Vector3.forward * aimOrbitForwardOffset;
-        Quaternion orbitRotation = Quaternion.Euler(pitch * aimOrbitPitchScale, 0f, 0f);
-        Vector3 desiredLocalPosition = orbitOffset + orbitRotation * (cameraOffset - orbitOffset);
+        Vector3 desiredLocalPosition = cameraOffset;
+        float pitchAmount = Mathf.InverseLerp(minimumPitch, maximumPitch, pitch);
+        pitchAmount = Mathf.Pow(pitchAmount, aimCameraHeightBias);
+        desiredLocalPosition.y = Mathf.Lerp(aimUpCameraHeight, aimDownCameraHeight, pitchAmount);
         Vector3 pivot = target.TransformPoint(orbitOffset);
         Vector3 desiredPosition = ResolveCollision(pivot, target.TransformPoint(desiredLocalPosition));
         desiredLocalPosition = target.InverseTransformPoint(desiredPosition);
@@ -282,14 +321,17 @@ public sealed class CameraController : MonoBehaviour
         if (gamepad.dpad.right.wasPressedThisFrame)
         {
             aimCameraPosition = AimCameraPosition.RightShoulder;
+            MarkAimCameraTransition(1f);
         }
         else if (gamepad.dpad.left.wasPressedThisFrame)
         {
             aimCameraPosition = AimCameraPosition.LeftShoulder;
+            MarkAimCameraTransition(-1f);
         }
         else if (gamepad.dpad.up.wasPressedThisFrame)
         {
             aimCameraPosition = AimCameraPosition.Front;
+            MarkAimCameraTransition(0f);
         }
     }
 

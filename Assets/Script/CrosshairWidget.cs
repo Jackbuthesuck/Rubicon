@@ -51,7 +51,7 @@ public sealed class CrosshairWidget : MonoBehaviour
     [SerializeField, Min(0f)] private float maximumGap = 44f;
     [SerializeField, Min(0f)] private float fadeStartSpeed = 2.2f;
     [SerializeField, Min(0f)] private float fadeEndSpeed = 3.5f;
-    [SerializeField] private float movementRotation = 7f;
+    [SerializeField] private float movementRotation = 45f;
     [SerializeField, Min(0f)] private float recoilRecoverySpeed = 80f;
     [SerializeField, Min(0f)] private float recoilMultiplier = 2.5f;
     [SerializeField, Min(0f)] private float firingFadePerShot = 0.35f;
@@ -134,7 +134,9 @@ public sealed class CrosshairWidget : MonoBehaviour
         firingFade = Mathf.Clamp01(firingFade + Mathf.Max(0.01f, firingFadePerShot));
     }
 
-    public void SetAimState(bool isAiming, Vector3 localVelocity, float maximumSpeed, WeaponCategory category = WeaponCategory.HG, bool isUnavailable = false, bool isAimAssistActive = false, float chamberPressure = 0f)
+    public float CurrentRotation => currentRotation;
+
+    public void SetAimState(bool isAiming, Vector3 localVelocity, float maximumSpeed, WeaponCategory category = WeaponCategory.HG, bool isUnavailable = false, bool isAimAssistActive = false, float chamberPressure = 0f, float lookHorizontal = 0f, float moveInputHorizontal = 0f)
     {
         CrosshairDefinition definition = GetDefinition(category);
         Image[] selectedPieces = definition != null && definition.pieces != null && definition.pieces.Length > 0
@@ -168,7 +170,9 @@ public sealed class CrosshairWidget : MonoBehaviour
         float expandScale = gap / Mathf.Max(0.01f, baseGap);
         float fade = 1f - Mathf.InverseLerp(fadeStartSpeed, Mathf.Max(fadeStartSpeed + 0.01f, fadeEndSpeed), speed);
         float chamberFade = 1f - chamberPressure * chamberFadeStrength;
-        float targetRotation = Mathf.Clamp(-localVelocity.x * movementRotation, -35f, 35f);
+        float movementRotationAmount = -moveInputHorizontal * movementRotation;
+        float lookRotationAmount = -lookHorizontal * 45f;
+        float targetRotation = Mathf.Clamp(movementRotationAmount + lookRotationAmount, -90f, 90f);
         currentRotation = Mathf.LerpAngle(currentRotation, targetRotation, 1f - Mathf.Exp(-12f * Time.deltaTime));
 
         canvasGroup.alpha = isAiming ? 1f : 0f;

@@ -246,6 +246,10 @@ MonoBehaviour:
   magazineAmmo: 12
   chamberAmmo: 1
   hudCanvas: {fileID: 100002}
+  shoulderHudTransitionOffset: 80
+  hudTransitionSharpness: 12
+  hudRollFromCrosshair: 2
+  hudRollSharpness: 12
   sortingOrder: 100
   barSize: {x: 420, y: 38}
   barSpacing: {x: 0, y: 14}
@@ -717,7 +721,7 @@ MonoBehaviour:
   maximumGap: 44
   fadeStartSpeed: 3.5
   fadeEndSpeed: 1
-  movementRotation: 10
+  movementRotation: 45
   recoilRecoverySpeed: 60
   recoilMultiplier: 3
   firingFadePerShot: 0.35
