@@ -1,0 +1,17 @@
+{
+  "id": "shak12",
+  "displayName": "ShAK-12",
+  "ammoId": "12.7x55",
+  "modelId": "shak12",
+  "magazineCapacity": 20,
+  "startingMagazineAmmo": 20,
+  "startingReserveAmmo": 120,
+  "roundsPerMinute": 650,
+  "reloadDuration": 1.8,
+  "reloadChamberDuration": 0.35,
+  "semiAutoCycleDuration": 0.35,
+  "aimRecoilYawMultiplier": 0.75,
+  "automatic": true,
+  "isTopLoad": false,
+  "category": "AR"
+}

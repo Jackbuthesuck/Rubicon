@@ -8,7 +8,8 @@
   "startingReserveAmmo": 120,
   "roundsPerMinute": 450,
   "reloadDuration": 1.2,
-  "chamberDuration": 0.15,
+  "reloadChamberDuration": 0.18,
+  "semiAutoCycleDuration": 0.18,
   "automatic": false,
   "isTopLoad": false,
   "category": "HG"

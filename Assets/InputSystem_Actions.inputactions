@@ -77,7 +77,17 @@
                     "priority": 0
                 },
                 {
-                    "name": "Use",
+                    "name": "Reload",
+                    "type": "Button",
+                    "id": "9eb25b00-6a6a-43b5-9bd6-1fff4fe51fe7",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "Use A",
                     "type": "Button",
                     "id": "d89ee870-2015-4d13-9d55-1ff47d5457f2",
                     "expectedControlType": "",
@@ -87,9 +97,19 @@
                     "priority": 0
                 },
                 {
-                    "name": "Reload",
+                    "name": "Use B",
                     "type": "Button",
-                    "id": "9eb25b00-6a6a-43b5-9bd6-1fff4fe51fe7",
+                    "id": "f88f45a9-ec4e-47a6-88e8-bc262d01b986",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "View",
+                    "type": "Button",
+                    "id": "a7d656d1-671b-4cc9-93c2-7f3332cd4fa5",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -147,6 +167,16 @@
                     "priority": 0
                 },
                 {
+                    "name": "Cursor",
+                    "type": "Button",
+                    "id": "8e1f5a0c2d4b6f7890a1b3c5d7e9f2a4",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
                     "name": "Menu",
                     "type": "Button",
                     "id": "71acb7d7-2050-4540-aab1-cfe0d78e7c1c",
@@ -166,6 +196,17 @@
                     "processors": "",
                     "groups": ";Gamepad",
                     "action": "Move",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "91a2b3c4-d5e6-4f70-8192-a3b4c5d6e7f8",
+                    "path": "<Keyboard>/rightAlt",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Cursor",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -385,7 +426,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "Use",
+                    "action": "Use A",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -396,7 +437,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Gamepad",
-                    "action": "Use",
+                    "action": "Use A",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -584,6 +625,50 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Crouch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "143f2ba3-21e7-4213-b047-5a3d4ffa9c4a",
+                    "path": "<Mouse>/middleButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "View",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2b27ecd8-afa0-4aa3-a5ba-67af43fc5111",
+                    "path": "<Gamepad>/rightStickPress",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "View",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "17b9f4a2-65c8-4fdf-a051-c8baa97c18f5",
+                    "path": "<Keyboard>/v",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Use B",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6201bbe3-ef50-475b-baa3-5c87d7cd3584",
+                    "path": "<Gamepad>/leftStickPress",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Use B",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

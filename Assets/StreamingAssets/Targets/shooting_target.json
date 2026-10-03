@@ -1,0 +1,128 @@
+{
+  "id": "shooting_target",
+  "displayName": "Shooting Target",
+  "totalHealth": 1050,
+  "parts": [
+    {
+      "id": "plate",
+      "displayName": "Plate",
+      "colliderNames": ["Plate"],
+      "takesDamage": false,
+      "armor": 30
+    },
+    {
+      "id": "head",
+      "displayName": "Head",
+      "colliderNames": ["Head"],
+      "damageMultiplier": 2.0,
+      "lethalDamageMultiplier": 1.0,
+      "blackedLethalDamageMultiplier": 1.25,
+      "blackedPartSpreadTargets": [],
+      "lethalPart": true,
+      "health": 100,
+      "armor": 5
+    },
+    {
+      "id": "thorax",
+      "displayName": "Thorax",
+      "colliderNames": ["Thorax"],
+      "damageMultiplier": 1.25,
+      "lethalDamageMultiplier": 1.0,
+      "blackedLethalDamageMultiplier": 1.25,
+      "blackedPartSpreadTargets": [],
+      "lethalPart": true,
+      "health": 250,
+      "armor": 15
+    },
+    {
+      "id": "pelvis",
+      "displayName": "Pelvis",
+      "colliderNames": ["Pelvis"],
+      "damageMultiplier": 1.0,
+      "criticalDamageMultiplier": 0.1,
+      "blackedPartSpreadTargets": ["thorax"],
+      "health": 150,
+      "armor": 10
+    },
+    {
+      "id": "arm_l",
+      "displayName": "Arm L",
+      "colliderNames": ["Arm L"],
+      "damageMultiplier": 0.7,
+      "criticalDamageMultiplier": 0.05,
+      "blackedPartSpreadTargets": ["thorax"],
+      "health": 75,
+      "armor": 5
+    },
+    {
+      "id": "arm_r",
+      "displayName": "Arm R",
+      "colliderNames": ["Arm R"],
+      "damageMultiplier": 0.7,
+      "criticalDamageMultiplier": 0.05,
+      "blackedPartSpreadTargets": ["thorax"],
+      "health": 75,
+      "armor": 5
+    },
+    {
+      "id": "leg_l",
+      "displayName": "Leg L",
+      "colliderNames": ["Leg L"],
+      "damageMultiplier": 0.8,
+      "criticalDamageMultiplier": 0.05,
+      "blackedPartSpreadTargets": ["pelvis"],
+      "health": 100,
+      "armor": 5
+    },
+    {
+      "id": "leg_r",
+      "displayName": "Leg R",
+      "colliderNames": ["Leg R"],
+      "damageMultiplier": 0.8,
+      "criticalDamageMultiplier": 0.05,
+      "blackedPartSpreadTargets": ["pelvis"],
+      "health": 100,
+      "armor": 5
+    },
+    {
+      "id": "hand_l",
+      "displayName": "Hand L",
+      "colliderNames": ["Hand L"],
+      "damageMultiplier": 0.5,
+      "criticalDamageMultiplier": 0.025,
+      "blackedPartSpreadTargets": ["arm_l"],
+      "health": 50,
+      "armor": 2
+    },
+    {
+      "id": "hand_r",
+      "displayName": "Hand R",
+      "colliderNames": ["Hand R"],
+      "damageMultiplier": 0.5,
+      "criticalDamageMultiplier": 0.025,
+      "blackedPartSpreadTargets": ["arm_r"],
+      "health": 50,
+      "armor": 2
+    },
+    {
+      "id": "foot_l",
+      "displayName": "Foot L",
+      "colliderNames": ["Foot L"],
+      "damageMultiplier": 0.5,
+      "criticalDamageMultiplier": 0.025,
+      "blackedPartSpreadTargets": ["leg_l"],
+      "health": 50,
+      "armor": 2
+    },
+    {
+      "id": "foot_r",
+      "displayName": "Foot R",
+      "colliderNames": ["Foot R"],
+      "damageMultiplier": 0.5,
+      "criticalDamageMultiplier": 0.025,
+      "blackedPartSpreadTargets": ["leg_r"],
+      "health": 50,
+      "armor": 2
+    }
+  ]
+}

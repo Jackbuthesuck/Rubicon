@@ -1,0 +1,18 @@
+{
+  "id": "rsh12",
+  "displayName": "RSh-12",
+  "ammoId": "12.7x55",
+  "modelId": "rsh12",
+  "magazineCapacity": 5,
+  "startingMagazineAmmo": 5,
+  "startingReserveAmmo": 30,
+  "roundsPerMinute": 30,
+  "reloadDuration": 1.8,
+  "reloadChamberDuration": 0.85,
+  "semiAutoCycleDuration": 0.85,
+  "aimRecoilYawMultiplier": 0.0,
+  "doubleActionHoldDuration": 0.2,
+  "automatic": false,
+  "isTopLoad": false,
+  "category": "HG"
+}

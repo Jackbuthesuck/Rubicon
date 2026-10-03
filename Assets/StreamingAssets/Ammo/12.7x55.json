@@ -1,0 +1,12 @@
+{
+  "id": "12.7x55",
+  "displayName": "12.7x55mm PS12",
+  "damage": 115,
+  "pellets": 1,
+  "moa": 2.0,
+  "projectileSpeed": 300,
+  "recoil": 14,
+  "penetration": 28,
+  "vpamLevel": "PM4",
+  "penetrationRangeMeters": "0-100"
+}

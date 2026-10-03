@@ -10,6 +10,7 @@ GameObject:
   - component: {fileID: 400000001}
   - component: {fileID: 114000001}
   - component: {fileID: 114000002}
+  - component: {fileID: 114000003}
   m_Layer: 0
   m_Name: KS-23
   m_TagString: Weapon
@@ -40,7 +41,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 73ff7aa3952886f4fa5af6332d7553bb, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponController
   weaponId: ks23
   fallbackDefinition: {fileID: 0}
@@ -61,6 +62,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0d3bb804b82c0849a568bd4b529f86d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Magazine
+--- !u!114 &114000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f60718293a4b5c6d7e8f901b2c3d4e5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponAttachmentSocket
+  originName: Origin
 --- !u!1001 &100100001
 PrefabInstance:
   m_ObjectHideFlags: 0
