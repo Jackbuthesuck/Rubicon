@@ -1,5 +1,34 @@
 {
   "files.exclude": {
     "**/*.meta": true
+  },
+  "files.associations": {
+    "*.anim": "yaml",
+    "*.asset": "yaml",
+    "*.brush": "yaml",
+    "*.controller": "yaml",
+    "*.flare": "yaml",
+    "*.fontsettings": "yaml",
+    "*.giparams": "yaml",
+    "*.guiskin": "yaml",
+    "*.lighting": "yaml",
+    "*.mask": "yaml",
+    "*.mat": "yaml",
+    "*.meta": "yaml",
+    "*.mixer": "yaml",
+    "*.overrideController": "yaml",
+    "*.physicMaterial": "yaml",
+    "*.physicsMaterial2D": "yaml",
+    "*.playable": "yaml",
+    "*.prefab": "yaml",
+    "*.preset": "yaml",
+    "*.renderTexture": "yaml",
+    "*.scenetemplate": "yaml",
+    "*.shadervariants": "yaml",
+    "*.signal": "yaml",
+    "*.spriteatlas": "yaml",
+    "*.spriteatlasv2": "yaml",
+    "*.terrainlayer": "yaml",
+    "*.unity": "yaml"
   }
 }

@@ -33,12 +33,15 @@ public sealed partial class CrosshairWidget
 
             for (int pieceIndex = 0; pieceIndex < definitionPieces.Length; pieceIndex++)
             {
-                if (definitionPieces[pieceIndex] != null)
+                Image piece = definitionPieces[pieceIndex];
+                if (piece == null || System.Array.IndexOf(selectedPieces, piece) >= 0)
                 {
-                    Color hiddenColor = definitionPieces[pieceIndex].color;
-                    hiddenColor.a = 0f;
-                    definitionPieces[pieceIndex].color = hiddenColor;
+                    continue;
                 }
+
+                Color hiddenColor = piece.color;
+                hiddenColor.a = 0f;
+                piece.color = hiddenColor;
             }
         }
     }

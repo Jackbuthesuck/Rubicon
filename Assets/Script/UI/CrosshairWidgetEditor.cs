@@ -12,6 +12,7 @@ public sealed partial class CrosshairWidget
 
         defaultPieces = FindFallbackPieces();
         EnsureGeneratedDefinitions();
+        CaptureEditorBaselines();
         UpdateEditorPreview();
         ApplyEditorPreview();
         MarkSceneDirty();
@@ -24,8 +25,10 @@ public sealed partial class CrosshairWidget
             return;
         }
 
+        RestoreEditorBaselines();
         defaultPieces = FindFallbackPieces();
         EnsureGeneratedDefinitions();
+        CaptureEditorBaselines();
         UpdateEditorPreview();
         ApplyEditorPreview();
         MarkSceneDirty();
@@ -86,12 +89,19 @@ public sealed partial class CrosshairWidget
 
         ConfigureGeneratedDefinition(WeaponCategory.LMG, new[]
         {
-            new PieceSpec(new Vector2(-44f, 34f), new Vector2(8f, 8f), 0f),
-            new PieceSpec(new Vector2(-22f, 12f), new Vector2(8f, 8f), 0f),
-            new PieceSpec(new Vector2(0f, -12f), new Vector2(8f, 8f), 0f),
-            new PieceSpec(new Vector2(22f, 12f), new Vector2(8f, 8f), 0f),
-            new PieceSpec(new Vector2(44f, 34f), new Vector2(8f, 8f), 0f)
-        }, new[] { CrosshairPieceMode.Expand, CrosshairPieceMode.Stay, CrosshairPieceMode.Stay, CrosshairPieceMode.Stay, CrosshairPieceMode.Expand }, new[] { true, true, true, true, true }, 34f, 66f);
+            new PieceSpec(new Vector2(0f, 56f), new Vector2(8f, 8f), 0f),
+            new PieceSpec(new Vector2(32.666668f, 32.666668f), new Vector2(8f, 8f), 0f),
+            new PieceSpec(new Vector2(56f, 0f), new Vector2(8f, 8f), 0f),
+            new PieceSpec(new Vector2(32.666668f, -32.666668f), new Vector2(8f, 8f), 0f),
+            new PieceSpec(new Vector2(0f, -56f), new Vector2(8f, 8f), 0f),
+            new PieceSpec(new Vector2(-32.666668f, -32.666668f), new Vector2(8f, 8f), 0f),
+            new PieceSpec(new Vector2(-56f, 0f), new Vector2(8f, 8f), 0f)
+        }, new[]
+        {
+            CrosshairPieceMode.Expand, CrosshairPieceMode.Expand, CrosshairPieceMode.Expand,
+            CrosshairPieceMode.Expand, CrosshairPieceMode.Expand, CrosshairPieceMode.Expand,
+            CrosshairPieceMode.Expand
+        }, new[] { true, true, true, true, true, true, true }, 34f, 66f);
     }
 
     private Image[] FindFallbackPieces()
@@ -139,6 +149,7 @@ public sealed partial class CrosshairWidget
 
     private void ApplyEditorPreview()
     {
+        RestoreEditorBaselines();
         CrosshairDefinition definition = GetDefinition(editorPreviewCategory);
         Image[] previewPieces = definition != null ? definition.pieces : defaultPieces;
         if (previewPieces == null || previewPieces.Length == 0)
@@ -146,25 +157,30 @@ public sealed partial class CrosshairWidget
             return;
         }
 
-        if (pieces != previewPieces || pieceRects == null || pieceRects.Length != previewPieces.Length)
+        pieces = previewPieces;
+        CachePieceGeometry(definition);
+
+        float minimum = definition != null ? definition.minimumGap : minimumGap;
+        float maximum = definition != null ? definition.maximumGap : maximumGap;
+        float runningSpeed = Mathf.Min(editorPreviewRunningSpeed, editorPreviewMaximumSpeed);
+        float movementAmount = Mathf.InverseLerp(0f, Mathf.Max(0.01f, editorPreviewMaximumSpeed), runningSpeed);
+        float recoilGapPreview = Mathf.Clamp(editorPreviewRecoilGap, 0f, maximum);
+        float expandScale = Mathf.Max(1f, minimum + recoilGapPreview);
+
+        for (int pieceIndex = 0; pieceIndex < previewPieces.Length; pieceIndex++)
         {
-            pieces = previewPieces;
-            CachePieceGeometry();
+            Image piece = previewPieces[pieceIndex];
+            RectTransform pieceRect = piece != null ? piece.rectTransform : null;
+            if (piece == null || pieceRect == null || pieceIndex >= pieceRects.Length)
+            {
+                continue;
+            }
+
+            float scale = GetPieceScale(definition, pieceIndex, movementAmount, expandScale);
+            pieceRect.anchoredPosition = GetPiecePosition(definition, pieceIndex, movementAmount, scale);
         }
 
-        canvasGroup = GetComponent<CanvasGroup>();
-        if (canvasGroup == null)
-        {
-            canvasGroup = gameObject.AddComponent<CanvasGroup>();
-        }
-
-        recoilGap = Mathf.Clamp(editorPreviewRecoilGap, 0f, maximumGap);
-        firingFade = Mathf.Clamp01(editorPreviewRecoilGap / Mathf.Max(0.01f, maximumGap));
-        SetAimState(
-            true,
-            new Vector3(0f, 0f, editorPreviewRunningSpeed),
-            editorPreviewMaximumSpeed,
-            editorPreviewCategory);
+        UpdateEditorPreview();
     }
 
     private static void SetPieceAlpha(Image piece, float alpha)
@@ -219,22 +235,18 @@ public sealed partial class CrosshairWidget
             definition.runningVisible = runningVisible;
         }
 
-        if (definition.fadeWhenMoving == null || definition.fadeWhenMoving.Length != runningVisible.Length)
+        int pieceCount = definition.pieces != null ? definition.pieces.Length : 0;
+        if (pieceCount == 0 && definition.layoutPieces != null)
         {
-            definition.fadeWhenMoving = new bool[runningVisible.Length];
-            for (int index = 0; index < runningVisible.Length; index++)
-            {
-                definition.fadeWhenMoving[index] = !runningVisible[index];
-            }
+            pieceCount = definition.layoutPieces.Length;
         }
 
-        if (definition.fadeWhenFiring == null || definition.fadeWhenFiring.Length != runningVisible.Length)
+        if (pieceCount > 0)
         {
-            definition.fadeWhenFiring = new bool[runningVisible.Length];
-            for (int index = 0; index < definition.fadeWhenFiring.Length; index++)
-            {
-                definition.fadeWhenFiring[index] = true;
-            }
+            NormalizeArray(ref definition.pieceModes, pieceCount, CrosshairPieceMode.Expand);
+            NormalizeArray(ref definition.runningVisible, pieceCount, true);
+            NormalizeArray(ref definition.fadeWhenMoving, pieceCount, false);
+            NormalizeArray(ref definition.fadeWhenFiring, pieceCount, false);
         }
 
         if (!hasLayout)
@@ -326,6 +338,162 @@ public sealed partial class CrosshairWidget
         }
 
         return true;
+    }
+
+    private void SyncLayoutsFromPieceTransforms()
+    {
+        if (crosshairs == null)
+        {
+            return;
+        }
+
+        for (int definitionIndex = 0; definitionIndex < crosshairs.Length; definitionIndex++)
+        {
+            CrosshairDefinition definition = crosshairs[definitionIndex];
+            if (definition == null || definition.pieces == null)
+            {
+                continue;
+            }
+
+            if (definition.layoutPieces == null || definition.layoutPieces.Length != definition.pieces.Length)
+            {
+                definition.layoutPieces = new CrosshairPieceDefinition[definition.pieces.Length];
+            }
+
+            for (int pieceIndex = 0; pieceIndex < definition.pieces.Length; pieceIndex++)
+            {
+                Image piece = definition.pieces[pieceIndex];
+                if (piece == null)
+                {
+                    continue;
+                }
+
+                if (definition.layoutPieces[pieceIndex] == null)
+                {
+                    definition.layoutPieces[pieceIndex] = new CrosshairPieceDefinition();
+                }
+
+                RectTransform pieceRect = piece.rectTransform;
+                definition.layoutPieces[pieceIndex].position = pieceRect.anchoredPosition;
+                definition.layoutPieces[pieceIndex].size = pieceRect.sizeDelta;
+                definition.layoutPieces[pieceIndex].rotation = pieceRect.localEulerAngles.z;
+            }
+        }
+    }
+
+    private void CacheAllPieceGeometry()
+    {
+        if (crosshairs == null)
+        {
+            return;
+        }
+
+        for (int definitionIndex = 0; definitionIndex < crosshairs.Length; definitionIndex++)
+        {
+            CrosshairDefinition definition = crosshairs[definitionIndex];
+            if (definition == null || definition.pieces == null)
+            {
+                continue;
+            }
+
+            for (int pieceIndex = 0; pieceIndex < definition.pieces.Length; pieceIndex++)
+            {
+                Image piece = definition.pieces[pieceIndex];
+                if (piece != null)
+                {
+                    RectTransform pieceRect = piece.rectTransform;
+                    pieceRect.anchorMin = new Vector2(0.5f, 0.5f);
+                    pieceRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    pieceRect.pivot = new Vector2(0.5f, 0.5f);
+                }
+            }
+        }
+    }
+
+    private void CaptureEditorBaselines()
+    {
+        editorBaselinePositions.Clear();
+        editorBaselineSizes.Clear();
+        editorBaselineRotations.Clear();
+        if (crosshairs == null)
+        {
+            return;
+        }
+
+        for (int definitionIndex = 0; definitionIndex < crosshairs.Length; definitionIndex++)
+        {
+            Image[] piecesToCapture = crosshairs[definitionIndex]?.pieces;
+            if (piecesToCapture == null)
+            {
+                continue;
+            }
+
+            for (int pieceIndex = 0; pieceIndex < piecesToCapture.Length; pieceIndex++)
+            {
+                RectTransform rect = piecesToCapture[pieceIndex]?.rectTransform;
+                if (rect == null)
+                {
+                    continue;
+                }
+
+                editorBaselinePositions[rect] = rect.anchoredPosition;
+                editorBaselineSizes[rect] = rect.sizeDelta;
+                editorBaselineRotations[rect] = rect.localRotation;
+            }
+        }
+
+        if (defaultPieces != null)
+        {
+            for (int pieceIndex = 0; pieceIndex < defaultPieces.Length; pieceIndex++)
+            {
+                RectTransform rect = defaultPieces[pieceIndex]?.rectTransform;
+                if (rect == null)
+                {
+                    continue;
+                }
+
+                editorBaselinePositions[rect] = rect.anchoredPosition;
+                editorBaselineSizes[rect] = rect.sizeDelta;
+                editorBaselineRotations[rect] = rect.localRotation;
+            }
+        }
+    }
+
+    private void RestoreEditorBaselines()
+    {
+        foreach (System.Collections.Generic.KeyValuePair<RectTransform, Vector2> entry in editorBaselinePositions)
+        {
+            if (entry.Key != null)
+            {
+                entry.Key.anchoredPosition = entry.Value;
+            }
+        }
+
+        foreach (System.Collections.Generic.KeyValuePair<RectTransform, Vector2> entry in editorBaselineSizes)
+        {
+            if (entry.Key != null)
+            {
+                entry.Key.sizeDelta = entry.Value;
+            }
+        }
+
+        foreach (System.Collections.Generic.KeyValuePair<RectTransform, Quaternion> entry in editorBaselineRotations)
+        {
+            if (entry.Key != null)
+            {
+                entry.Key.localRotation = entry.Value;
+            }
+        }
+    }
+
+    private static void NormalizeArray<T>(ref T[] array, int count, T fallback)
+    {
+        T[] normalized = new T[count];
+        for (int index = 0; index < count; index++)
+        {
+            normalized[index] = array != null && index < array.Length ? array[index] : fallback;
+        }
+        array = normalized;
     }
 
     private readonly struct PieceSpec

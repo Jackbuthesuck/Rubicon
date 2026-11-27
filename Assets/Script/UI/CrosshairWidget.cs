@@ -44,6 +44,10 @@ public sealed partial class CrosshairWidget : MonoBehaviour
     private Vector2 baseCrosshairPosition;
     private Vector2 currentRecoilAimOffset;
 
+    private readonly System.Collections.Generic.Dictionary<RectTransform, Vector2> editorBaselinePositions = new System.Collections.Generic.Dictionary<RectTransform, Vector2>();
+    private readonly System.Collections.Generic.Dictionary<RectTransform, Vector2> editorBaselineSizes = new System.Collections.Generic.Dictionary<RectTransform, Vector2>();
+    private readonly System.Collections.Generic.Dictionary<RectTransform, Quaternion> editorBaselineRotations = new System.Collections.Generic.Dictionary<RectTransform, Quaternion>();
+
     public void Initialize(Image[] crosshairPieces)
     {
         defaultPieces = crosshairPieces;
@@ -54,7 +58,6 @@ public sealed partial class CrosshairWidget : MonoBehaviour
             pieces = defaultPieces;
         }
 
-        CachePieceGeometry();
         crosshairRect = transform as RectTransform;
         baseCrosshairPosition = crosshairRect != null ? crosshairRect.anchoredPosition : Vector2.zero;
         canvasGroup = GetComponent<CanvasGroup>();
@@ -62,6 +65,9 @@ public sealed partial class CrosshairWidget : MonoBehaviour
         {
             canvasGroup = gameObject.AddComponent<CanvasGroup>();
         }
+
+        CrosshairDefinition initialDefinition = GetDefinition(WeaponCategory.HG);
+        CachePieceGeometry(initialDefinition);
 
         SetAimState(false, Vector3.zero, 1f);
     }
@@ -110,7 +116,12 @@ public sealed partial class CrosshairWidget : MonoBehaviour
         if (selectedPieces != pieces)
         {
             pieces = selectedPieces;
-            CachePieceGeometry();
+            CachePieceGeometry(definition);
+        }
+
+        if (definition != null)
+        {
+            // The serialized layout is the baseline cached from scene Transforms.
         }
 
         if (pieces == null || pieceRects == null)
@@ -217,6 +228,39 @@ public sealed partial class CrosshairWidget : MonoBehaviour
             basePositions[pieceIndex] = GetCenteredPosition(pieceRect, parent);
             baseSizes[pieceIndex] = pieceRect.sizeDelta;
             baseGap = Mathf.Max(baseGap, basePositions[pieceIndex].magnitude);
+            pieceRect.anchorMin = new Vector2(0.5f, 0.5f);
+            pieceRect.anchorMax = new Vector2(0.5f, 0.5f);
+            pieceRect.pivot = new Vector2(0.5f, 0.5f);
+            pieceRect.anchoredPosition = basePositions[pieceIndex];
+        }
+    }
+
+    private void CachePieceGeometry(CrosshairDefinition definition)
+    {
+        if (pieces == null)
+        {
+            return;
+        }
+
+        pieceRects = new RectTransform[pieces.Length];
+        basePositions = new Vector2[pieces.Length];
+        baseSizes = new Vector2[pieces.Length];
+        baseGap = 0f;
+
+        RectTransform parent = transform as RectTransform;
+        for (int pieceIndex = 0; pieceIndex < pieces.Length; pieceIndex++)
+        {
+            if (pieces[pieceIndex] == null)
+            {
+                continue;
+            }
+
+            RectTransform pieceRect = pieces[pieceIndex].rectTransform;
+            pieceRects[pieceIndex] = pieceRect;
+            basePositions[pieceIndex] = GetCenteredPosition(pieceRect, parent);
+            baseSizes[pieceIndex] = pieceRect.sizeDelta;
+            baseGap = Mathf.Max(baseGap, basePositions[pieceIndex].magnitude);
+
             pieceRect.anchorMin = new Vector2(0.5f, 0.5f);
             pieceRect.anchorMax = new Vector2(0.5f, 0.5f);
             pieceRect.pivot = new Vector2(0.5f, 0.5f);

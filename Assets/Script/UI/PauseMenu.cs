@@ -107,6 +107,8 @@ public sealed class PauseMenu : MonoBehaviour
         }
 
         Text[] textElements = menuRoot.GetComponentsInChildren<Text>(true);
+        UIFontFallback.ApplyToHierarchy(menuRoot != null ? menuRoot.transform : null, menuFont);
+
         for (int textIndex = 0; textIndex < textElements.Length; textIndex++)
         {
             if (textElements[textIndex].text == "PAUSED")
@@ -619,7 +621,7 @@ public sealed class PauseMenu : MonoBehaviour
         titleTextObject.transform.SetParent(titleSlotRect, false);
         Text pauseTitle = titleTextObject.GetComponent<Text>();
         pauseTitle.text = "PAUSED";
-        pauseTitle.font = menuFont;
+        pauseTitle.font = UIFontFallback.Resolve(menuFont);
         pauseTitle.fontSize = 30;
         pauseTitle.fontStyle = FontStyle.Bold;
         pauseTitle.alignment = TextAnchor.MiddleRight;
@@ -952,7 +954,7 @@ public sealed class PauseMenu : MonoBehaviour
 
         Text label = labelObject.GetComponent<Text>();
         label.text = text;
-        label.font = menuFont;
+        label.font = UIFontFallback.Resolve(menuFont);
         label.fontSize = fontSize;
         label.alignment = alignment;
         label.color = color;

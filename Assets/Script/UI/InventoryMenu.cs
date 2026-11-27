@@ -302,6 +302,8 @@ public sealed class InventoryMenu : MonoBehaviour
         equipmentSlots = equipmentList != null
             ? equipmentList.GetComponentsInChildren<Button>(true)
             : new Button[0];
+        UIFontFallback.ApplyToHierarchy(contentRoot, null);
+
         EnsureEquipmentSlots();
         equippedMarkerTemplate = equipmentSlots.Length > 0 && equipmentSlots[0] != null
             ? equipmentSlots[0].transform.Find("EquippedMarker")?.GetComponent<Image>()

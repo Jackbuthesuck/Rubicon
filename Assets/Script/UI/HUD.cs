@@ -220,7 +220,7 @@ public sealed class HUD : MonoBehaviour
             }
         }
 
-        Font fallbackFont = hudFont != null ? hudFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        Font fallbackFont = UIFontFallback.Resolve(hudFont);
         Text[] labels = content.GetComponentsInChildren<Text>(true);
         foreach (Text label in labels)
         {
@@ -397,7 +397,7 @@ public sealed class HUD : MonoBehaviour
 
         Text valueText = labelObject.GetComponent<Text>();
         valueText.alignment = TextAnchor.MiddleLeft;
-        valueText.font = hudFont;
+        valueText.font = UIFontFallback.Resolve(hudFont);
         valueText.fontSize = 20;
         valueText.color = Color.white;
         widget.Initialize(fill, valueText);

@@ -16,7 +16,6 @@ public sealed class WeaponLoadout : MonoBehaviour
     [SerializeField] private WeaponModelEntry[] weaponModels;
     [SerializeField] private GameObject fallbackWeaponModel;
     [SerializeField, Min(0)] private int startingSlot;
-    [SerializeField] private bool enableKeyboardTesting = true;
 
     private readonly List<WeaponController> weapons = new List<WeaponController>();
     private readonly Dictionary<WeaponController, GameObject> weaponRoots = new Dictionary<WeaponController, GameObject>();
@@ -69,23 +68,8 @@ public sealed class WeaponLoadout : MonoBehaviour
 
     private void Update()
     {
-        if (!enableKeyboardTesting || Keyboard.current == null || weapons.Count == 0)
-        {
-            return;
-        }
-
-        Key[] numberKeys =
-        {
-            Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9
-        };
-        for (int keyIndex = 0; keyIndex < numberKeys.Length; keyIndex++)
-        {
-            if (Keyboard.current[numberKeys[keyIndex]].wasPressedThisFrame)
-            {
-                SelectWeapon(keyIndex);
-                return;
-            }
-        }
+        // Weapon selection is controlled by the Input System wheels/loadout UI,
+        // not by direct number-key slot shortcuts.
     }
 
     public bool SelectWeapon(int slot)

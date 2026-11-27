@@ -83,7 +83,7 @@ public sealed class WeaponRadialMenu : MonoBehaviour
             canvas = GetComponentInParent<Canvas>();
         }
 
-        font = radialFont;
+        font = UIFontFallback.Resolve(radialFont);
     }
 
     private void Start()
@@ -168,11 +168,6 @@ public sealed class WeaponRadialMenu : MonoBehaviour
 
         bool primaryPressed = primaryWheelAction != null && primaryWheelAction.IsPressed();
         bool secondaryPressed = secondaryWheelAction != null && secondaryWheelAction.IsPressed();
-        if (Keyboard.current != null)
-        {
-            primaryPressed |= Keyboard.current.digit1Key.isPressed;
-            secondaryPressed |= Keyboard.current.digit2Key.isPressed;
-        }
         if (Gamepad.current != null)
         {
             primaryPressed |= Gamepad.current.dpad.up.isPressed;
@@ -245,7 +240,6 @@ public sealed class WeaponRadialMenu : MonoBehaviour
         }
 
         bool usePressed = useAction != null && useAction.WasPressedThisFrame();
-        usePressed |= Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
         usePressed |= Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame;
         if (usePressed && pendingWeapon != null)
         {
